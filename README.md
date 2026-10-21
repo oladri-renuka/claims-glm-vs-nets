@@ -1,180 +1,210 @@
-# Neural claim pricing and risk segmentation on freMTPL2 (678K French motor policies)
+# Neural claim pricing vs the Poisson GLM on freMTPL2 (678K French motor policies)
 
-**Result: on held-out test data, a 5-seed neural ensemble cuts Poisson deviance by 2.1–2.2% versus the industry-standard Poisson GLM (31.18 → 30.50 ×10⁻², 95% CI excludes 0), and the gain survives a leakage-free grouped split. A tuned LightGBM beats both (−4.0%). Neural nets do not help on severity, and VAE segments separate risk far worse than simple GLM-frequency bands.**
+**Result: on a leakage-free test split, neural nets (FFNN, CANN) cut out-of-sample Poisson deviance by 1.9% versus the industry-standard Poisson GLM (31.50 → 30.89 ×10⁻², 95% CI excludes 0). A tuned LightGBM cuts it by 3.2% and beats every neural net. Neural nets do not help on claim severity, and VAE segments separate risk far worse than simple GLM-frequency bands.**
 
 ![Double-lift chart](reports/figures/double_lift.png)
 
-*Double-lift on test: policies sorted by the FFNN/GLM prediction ratio. Where the two models disagree (deciles 1 and 10), the observed frequency (black) follows the neural net. The GLM over-prices decile 1 by 70% and under-prices decile 10 by 43%.*
+*Double-lift on the test split: policies are sorted by the CANN/GLM prediction ratio. Where the two models disagree, observed claim frequency (black) follows the neural net. The GLM over-prices decile 1 by 77% and under-prices decile 10 by 42%.*
 
 ## How to run (3 commands)
 
 ```bash
 make setup     # pip install -r requirements.txt
 make all       # download → clean/split → train every config × seeds → evaluate on test → serving bundle → latency benchmark
-make serve     # FastAPI on :8000   (make app → Streamlit premium explorer; make test → 18 tests)
+make serve     # FastAPI on :8000   (make app → Streamlit premium explorer; make test → 19 tests)
 ```
 
-Example quote: `curl -X POST 'localhost:8000/quote?model=nn' -H 'content-type: application/json' -d @serve/example_policy.json`
+Example: `curl -X POST 'localhost:8000/quote?model=nn' -H 'content-type: application/json' -d @serve/example_policy.json`
+
+[![docker-smoke](https://github.com/oladri-renuka/glm-vs-nets/actions/workflows/docker.yml/badge.svg)](https://github.com/oladri-renuka/glm-vs-nets/actions/workflows/docker.yml): CI builds the serving image, prices a policy through the container, and checks that an unknown VehBrand gets a 422.
+
+## The split matters: duplicate policies
+
+freMTPL2 contains the same driver and car under several policy IDs. 38% of policies share every rating factor with at least one other policy. Under a plain random split, **32.8% of test policies have an exact twin in train**, so flexible models are partly scored on policies they have effectively already seen.
+
+**All headline numbers therefore use `split_grouped`**: policies with identical rating factors always land in the same split. That leaves 0% twins across train and test. The split is stratified on "any claim in the group" and comes out 80.0/10.0/10.0, with matched claim rates (0.1005 train vs 0.1008 test). The plain random split is kept as a sensitivity check (I7, below).
 
 ## Results
 
-All numbers are on the untouched **test** split (67,802 policies). Only `src/eval.py` reads it, and it ran once after every model had been chosen on validation. "± std" is across training seeds with a fixed data split. "Ensemble" averages the seed predictions. Deviance is the mean unit deviance ×10⁻² (lower is better).
+All numbers are on the untouched test split (67,803 policies) unless marked "val". Deviance is the mean unit deviance ×10⁻² (lower is better). "± std" is across training seeds with a fixed data split. "Ensemble" averages the seed predictions. CIs are paired bootstraps over policies (1,000 resamples).
 
-### Q1 — Frequency (I1, I2)
+### Q1: Frequency (I1, I2), grouped split
 
-| Model | Seeds | Test deviance (mean ± std) | Seed ensemble | Δ vs GLM | GLM − model, 95% bootstrap CI | Σpred/Σactual |
+| Model | Seeds | Test deviance (mean ± std) | Seed ensemble | Δ vs GLM | GLM − model, 95% CI | Σpred/Σactual |
 |---|---|---|---|---|---|---|
-| Homogeneous (one rate) | 1 | 32.944 | 32.944 | −5.65% | [−1.99, −1.54] | 1.002 |
-| **Poisson GLM** (Noll et al. binning) | 1* | 31.183 | 31.183 | — | — | 1.003 |
-| LightGBM (Poisson, offset) | 5 | **29.959 ± 0.016** | **29.947** | **+3.96%** | [1.04, 1.45] | 1.004 |
-| FFNN, one-hot categoricals | 5 | 30.629 ± 0.028 | 30.546 | +2.04% | [0.50, 0.79] | 0.995 |
-| FFNN, entity embeddings | 5 | 30.597 ± 0.048 | 30.516 | +2.14% | [0.54, 0.81] | 1.007 |
-| CANN (GLM skip connection) | 5 | 30.598 ± 0.043 | 30.500 | +2.19% | [0.56, 0.82] | 1.002 |
+| Homogeneous (one rate) | 1 | 33.195 | 33.195 | −5.38% | [−1.91, −1.48] | 0.997 |
+| **Poisson GLM** (Noll et al. binning) | 1* | 31.499 | 31.499 | — | — | 0.999 |
+| **LightGBM** (Poisson, offset, tuned) | 5 | **30.482 ± 0.005** | **30.477** | **+3.24%** | [0.85, 1.18] | 1.002 |
+| FFNN, one-hot categoricals | 5 | 30.981 ± 0.023 | 30.919 | +1.84% | [0.43, 0.72] | 1.016 |
+| FFNN, entity embeddings | 5 | 30.972 ± 0.030 | 30.912 | +1.86% | [0.43, 0.73] | 1.003 |
+| CANN (GLM skip connection) | 5 | 30.981 ± 0.037 | 30.893 | +1.92% | [0.47, 0.74] | 1.008 |
 
-\*The GLM and the homogeneous model are fitted deterministically (IRLS / closed form), so their seed variance is 0 by construction.
+\*The GLM (IRLS) and the homogeneous model are deterministic, so their seed std is 0 by construction.
 
-**Does the gain survive a fair comparison? (I7)** 32.8% of test policies have an exact rating-factor twin in train, most likely the same insured re-issued under a new `IDpol`. Flexible models can memorise these twins. Every model was therefore retrained on `split_grouped`, which keeps twins in the same split:
+- **Who wins:** gradient boosting, clearly. LightGBM's lead over the best neural net (30.48 vs 30.89) is more than 10 times the NN seed std.
+- **Was LightGBM tuned fairly?** Yes: it got a **20-trial random search** on validation deviance ([search table](reports/tables/lgbm_search.md)), and the best configuration was refitted on 5 seeds. The search surface is flat: every trial landed between 30.83 and 30.88 val. So the result does not hinge on tuning, and the neural nets do not beat gradient boosting here.
+- **Embeddings vs one-hot (I2):** they tie (30.912 vs 30.919, inside the seed noise). Embeddings help interpretability (I3) more than accuracy.
+- **CANN vs FFNN:** CANN is best of the nets by a hair. It also starts exactly at the GLM, which a test verifies, so the network only learns the GLM's residual. That makes it the easiest model for a pricing team to sign off.
+- **Seed ensembling:** averaging 5 seeds is worth 0.06–0.09 ×10⁻², two to three times the single-seed std.
+- **Calibration:** totals match within 1.6% (balance property), and decile plots are in [calibration_deciles.png](reports/figures/calibration_deciles.png).
 
-| Grouped split (3 seeds) | Ensemble test deviance | Δ vs GLM |
+### I7: How much does the random split inflate the gains?
+
+| Δ vs GLM (seed ensemble) | Random split (twins leak) | Grouped split (headline) |
 |---|---|---|
-| GLM | 31.331 | — |
-| LightGBM | 30.338 | +3.17% (was +3.96%) |
-| FFNN (embeddings) | 30.686 | +2.06% (was +2.14%) |
-| CANN | 30.728 | +1.93% (was +2.19%) |
+| LightGBM | +4.30% | +3.24% |
+| FFNN (embeddings) | +2.13% | +1.86% |
+| CANN | +2.19% | +1.92% |
 
-Twin leakage accounts for about a fifth of LightGBM's advantage but barely affects the neural nets. On both splits every model's gain over the GLM keeps a 95% CI above zero.
+The leakage inflates every flexible model: LightGBM's gain by about a third, the neural nets' by about 15%. The ranking (LightGBM > NN > GLM) and the significance of every gain are unchanged. Full table: [frequency_results_random_split.md](reports/tables/frequency_results_random_split.md). The random-split runs use 3 seeds, and LightGBM reuses the grouped-split search result.
 
-- **Embeddings vs one-hot (I2):** a small, consistent win for embeddings: 30.516 vs 30.546. That gap is about the size of the seed noise, so it is not a strong effect.
-- **CANN vs FFNN:** CANN ties with the FFNN. Starting from the GLM is a useful safety property (the network only learns the residual), but it does not improve accuracy here.
-- **Seed ensembling:** averaging seeds is worth 0.08–0.10 ×10⁻², about twice the single-seed std.
-- **Calibration:** all models satisfy the balance property within 0.7% on test. Decile calibration plots: [reports/figures/calibration_deciles.png](reports/figures/calibration_deciles.png).
-
-### Severity (I4): deep learning does not help with 21K claims
+### I4: Severity (Gamma deviance on 2,614 test claims)
 
 | Model | Seeds | Test Gamma deviance | Ensemble | GLM − model, 95% CI |
 |---|---|---|---|---|
-| Constant mean | 1 | 1.1638 | 1.1638 | [−0.022, 0.022] |
-| Gamma GLM | 1 | 1.1641 | 1.1641 | — |
-| Gamma NN | 5 | 1.1556 ± 0.0042 | 1.1544 | [−0.010, 0.030] |
+| Constant mean | 1 | 1.1240 | 1.1240 | [−0.041, 0.001] |
+| **Gamma GLM** | 1 | **1.1037** | **1.1037** | — |
+| Gamma NN | 5 | 1.1095 ± 0.0034 | 1.1069 | [−0.016, 0.010] |
 
-The Gamma GLM does no better than a constant mean, and the NN's 0.8% edge has a CI that includes zero. The rating factors carry almost no severity signal at the 99.5% cap (€34,148; 133 claims capped, with a large-loss load of ×1.22 added back into the premium).
+The severity network is now properly trained. At lr 1e-3 its validation deviance peaked at epoch 1. At lr 1e-4 with patience 100, its best epochs are 187–543, and validation deviance improved from 1.233 to 1.106–1.112. Even so, **it does not beat the Gamma GLM on test**: the CI includes 0, and the point estimate slightly favours the GLM. With 21K training claims and rating factors that carry little severity signal, deep learning has nothing extra to find.
 
-### Pure premium ranking
+Claims are capped at the train 99.5th percentile (€36,549; 120 claims). The capped excess is added back as a flat large-loss load of ×1.38.
 
-Ordered Lorenz curve on test, ranked by predicted pure premium per policy-year ([figure](reports/figures/lorenz_pure_premium.png)):
+### Pure premium: ranking and double-lift
 
-| Frequency × severity | Gini (± bootstrap sd) |
+| Pure premium = frequency × severity | Gini (± bootstrap sd) |
 |---|---|
-| GLM × Gamma GLM | 0.277 ± 0.026 |
-| CANN × Gamma NN | 0.321 ± 0.025 |
-| FFNN × Gamma NN | 0.333 ± 0.025 |
-| LightGBM × Gamma GLM | 0.335 ± 0.027 |
+| GLM × Gamma GLM | 0.295 ± 0.022 |
+| FFNN × Gamma NN | 0.315 ± 0.023 |
+| CANN × Gamma NN | 0.318 ± 0.021 |
+| LightGBM × Gamma GLM | 0.332 ± 0.022 |
 
-### Embeddings (I3)
+Ordered Lorenz curve: [lorenz_pure_premium.png](reports/figures/lorenz_pure_premium.png). Policies are ranked by premium per policy-year.
+
+![Pure-premium double-lift](reports/figures/double_lift_pure_premium.png)
+
+The pure-premium double-lift above is what an insurer prices on. Predictions are rescaled to the actual total so that only ranking differs. Across deciles, CANN × Gamma NN is off by €18.6 per policy-year on average, against €40.8 for the GLM pair. It over-shoots the top decile (€344 vs €299 actual) but never misses as badly as the GLM does at either end (€246 vs €144 in decile 1, €195 vs €299 in decile 10).
+
+**Note on totals.** 27.9% of test claims have no amount in the severity table (see Data decisions below). On policies with complete severity data, predicted pure premium is therefore ×1.39–1.42 above observed losses. That is the expected gap if the missing amounts are missing at random (1/0.721 = 1.39), and it is why every double-lift series is rescaled.
+
+### I3: Embeddings
 
 ![Embeddings](reports/figures/embeddings.png)
 
-- **VehBrand:** the embedding is meaningful. Distance between brands tracks the gap in their log claim frequency (Spearman 0.49 ± 0.11 over 5 seeds). B12, the high-frequency brand, sits apart, and B14 (lowest frequency) is the opposite outlier.
-- **Region:** the embedding is mostly noise (Spearman 0.09 ± 0.06). Once Density and Area are in the model, region adds little.
+- **VehBrand:** the embedding is meaningful. Across brand pairs, embedding distance tracks the gap in log claim frequency (Spearman 0.53 ± 0.10 over 5 seeds). The high-frequency B12 and the low-frequency B14 sit apart from the cluster of mainstream brands.
+- **Region:** the embedding is mostly noise (Spearman 0.08 ± 0.06). Once Density and Area are in the model, region adds little.
 
-### Interpretability
+### Interpretability: partial dependence (NN vs GLM)
 
 ![Partial dependence](reports/figures/partial_dependence.png)
 
-- **BonusMalus:** the GLM's log-linear term over-extrapolates. At BonusMalus = 150 it predicts 0.88 claims/year vs 0.49 for the FFNN.
-- **DrivAge:** the GLM's step bins are visible. The FFNN is smooth but **under-predicts drivers aged 18–20** (≈0.08 vs ≈0.15 for the GLM and ≈0.19 for LightGBM). Partial dependence evaluates every policy at the same age, so a smooth tanh net with only ~1% of policies in that range flattens the spike.
+- **BonusMalus:** the GLM's log-linear term over-extrapolates. At BonusMalus 150 it predicts 0.87 claims/year, against 0.70 for CANN, 0.56 for the FFNN and 0.40 for LightGBM.
+- **DrivAge:** CANN keeps the GLM's bins and adds a smooth correction. Above age 70 that correction keeps rising (0.16 at 90), an extrapolation backed by little data. The plain FFNN is smooth everywhere and puts 18-year-olds at the *bottom* of the curve (0.08), against 0.15 for the GLM and 0.17 for LightGBM.
+- **VehAge:** all models agree. New vehicles have a high rate, there is a step at 10 years, then a decline.
 
-### Q2 — Segmentation (I5): the VAE does not find better risk segments
+### Q2: Segmentation (I5). The VAE does not find better risk segments.
 
-Clusterers were fitted on train and are evaluated on test. VAE and raw-feature results are means over 3 seeds. Full sweep (k = 4..10) and segment profiles: [reports/segmentation_report.md](reports/segmentation_report.md).
+Clusterers are fitted on train and evaluated on test. VAE and raw-feature results are means over 3 seeds. The full k = 4..10 sweep and segment profiles are in [reports/segmentation_report.md](reports/segmentation_report.md).
 
 | k = 6 | Max/min segment frequency | Deviance reduction vs one rate | Silhouette | Seed stability (ARI) |
 |---|---|---|---|---|
-| **GLM-predicted-frequency bands** | **4.79×** | **4.53%** | 0.46 | 1.00 (deterministic) |
-| k-means on raw standardized features | 2.51× | 1.56% | 0.12 | 1.00 |
-| VAE latent + k-means | 2.30× | 1.44% | 0.21 | 0.53 |
-| VAE latent + GMM | 2.34× | 0.78% | 0.11 | 0.64 |
+| **GLM-predicted-frequency bands** | **4.68×** | **4.46%** | 0.46 | 1.00 (deterministic) |
+| k-means on raw standardized features | 2.65× | 1.62% | 0.12 | 1.00 |
+| VAE latent + k-means | 2.23× | 1.20% | 0.21 | 0.65 |
+| VAE latent + GMM | 2.29× | 0.53% | 0.08 | 0.67 |
 
-The answer to Q2 is **no**. The VAE is unsupervised: it compresses whatever explains the most variance in the rating factors (vehicle power, age, density), which is not what explains claims. Its clusters are also unstable across seeds (ARI ≈ 0.5). The supervised GLM bands spread risk twice as much at every k. The API still returns the VAE segment, which is useful for describing the portfolio but should not be used for pricing.
+The answer is **no**, at every k from 4 to 10. The VAE (now trained to convergence) is unsupervised: it compresses whatever explains the most variance in the rating factors, which is not what explains claims. Its clusters are also only moderately stable across seeds (ARI ≈ 0.65). Supervised GLM bands spread risk roughly twice as much. The API still returns the VAE segment, which is useful for describing the portfolio but not for pricing.
 
-### Anomalies (I6)
+### I6: Anomalies
 
-The autoencoder's top 1% of test policies by reconstruction error are:
-- older drivers (median 57 vs 44) with high BonusMalus (80 vs 50);
-- mostly on rare brands (B14 ×12 over-represented, B5 ×4.7) and in small regions (Franche-Comté and Champagne-Ardenne ×11).
-
-These policies have **twice the claim frequency** (0.204 vs 0.099). Agreement between the 3 autoencoder seeds on which policies are in that top 1% is low (Jaccard 0.25), so treat the flag as a soft signal.
+The autoencoder's top 1% of test policies by reconstruction error are older drivers (median 53 vs 44) with high BonusMalus (79 vs 50) in denser areas. They are dominated by rare brands: B14 is 46× over-represented, B13 5.7×. Their observed claim frequency is **1.5× the rest** (0.154 vs 0.100). Agreement between the 3 autoencoder seeds on which policies are in that top 1% is low (Jaccard 0.26), so treat the flag as a soft "review manually" signal.
 
 ## Failure analysis: where the models fail
 
-Full tables: [reports/tables/failure_*.md](reports/tables).
+Full tables: [failure_actual_vs_expected.md](reports/tables/failure_actual_vs_expected.md), [failure_deviance_by_claimnb.md](reports/tables/failure_deviance_by_claimnb.md), [failure_worst_policies.md](reports/tables/failure_worst_policies.md).
 
-1. **Short exposures (the largest failure).** Policies with ≤ 0.1 years of exposure have 3.1× more claims than predicted (A/E 3.14 for the FFNN, 3.31 for the GLM). Full-year policies have 21% fewer (A/E 0.79). Every model assumes claims scale proportionally with exposure, and this data breaks that: policies are likely cancelled or re-issued after a claim. All models share this failure, and modelling exposure non-linearly would be the next step.
-2. **Multi-claim policies.** The 3.4K test policies with any claim account for 68% of the FFNN's deviance. For the 185 policies with 2+ claims the FFNN predicts 0.11 on average. The worst cases are policies like IDpol 3253234 (4 claims in 0.08 years, predicted 0.006) and IDpol 2247986, an apparent twin of it (3 claims, same region and brand, age 52 vs 53). These are unforecastable from rating factors.
-3. **Young drivers.** The FFNN is calibrated on 18–20-year-olds overall (A/E 1.06), but its age curve is too smooth (see the partial dependence above). Ages 26–30 are over-predicted by about 9% (A/E 0.91).
-4. **Severity.** No model ranks claim cost meaningfully (see above).
-5. **Missing severities.** 27% of claims (9,658) have no amount in the severity table. On policies with complete severity data, predicted pure premium exceeds observed losses by ×1.30. That is the expected result if the missing amounts are random, but it cannot be verified.
+1. **Short exposures (the largest failure, and shared by all models).** Policies with ≤ 0.1 years of exposure have **3.1× more claims than predicted** (A/E 3.13 for CANN, 3.30 for the GLM). Full-year policies have 18% fewer than predicted. Every model treats exposure as a proportional offset, but here claims do not scale with exposure: policies are likely cancelled or re-issued after a claim. Modelling exposure non-linearly is the obvious next step.
+2. **Young drivers.** CANN over-predicts 18–20-year-olds by 30% (A/E 0.77, 54 claims) and under-predicts 26–30-year-olds (A/E 1.17). The GLM shows the same pattern, slightly milder (0.81 / 1.12).
+3. **Multi-claim policies.** The 3.4K test policies with a claim produce 68% of CANN's deviance. For the 185 policies with 2+ claims, the mean prediction is 0.11 claims. The worst case is IDpol 5896: 2 claims in 0.003 years. These are unforecastable from rating factors.
+4. **Severity.** No model ranks claim cost meaningfully better than the Gamma GLM.
+5. **Missing severities.** 27.9% of test claims have no amount. Whether they are missing at random cannot be tested here.
 
 ## Deployment
 
 The service is in `serve/`.
+
 - **Endpoint:** FastAPI `POST /quote?model=nn|glm` returns:
   - expected frequency, expected claims, expected severity
-  - pure premium, both per year and for the requested exposure
-  - VAE risk segment with that segment's observed frequency
+  - pure premium, both annual and for the requested exposure
+  - VAE risk segment, with that segment's observed frequency
   - autoencoder anomaly flag and score
-- **Validation:** a Pydantic schema enforces types, observed ranges and known categories. An unknown VehBrand or Region gets a 422 error that lists the allowed values. `GET /health` is also available.
-- **Model choice:** the served frequency NN (FFNN with embeddings, 5-seed ensemble) was chosen by **validation** deviance, not test.
+- **Validation:** a Pydantic schema enforces types, observed ranges and known categories. An unknown VehBrand or Region gets a 422 that lists the allowed values. `GET /health` is also available.
+- **Model choice:** the served neural model is the **CANN 5-seed ensemble with the Gamma NN**. CANN was chosen over the FFNN by **validation** deviance, not test.
 
-| Latency, single request, Apple M4 CPU, 1 thread, n = 1000 | p50 | p95 |
+| Latency, one request at a time, Apple M4 CPU, 1 thread, n = 1000 | p50 | p95 |
 |---|---|---|
-| HTTP end-to-end, NN (5 freq + 5 sev nets + AE + VAE) | 13.9 ms | 14.7 ms |
-| HTTP end-to-end, GLM | 5.5 ms | 6.3 ms |
-| In-process, NN | 12.7 ms | 13.2 ms |
+| HTTP end-to-end, NN (5 CANN + 5 Gamma NN + AE + VAE) | 9.2 ms | 9.8 ms |
+| HTTP end-to-end, GLM | 7.1 ms | 7.7 ms |
+| In-process, NN | 8.1 ms | 8.4 ms |
 
-- **Model size:** the whole serving bundle (all weights, GLM coefficients, preprocessing, segmenter) is **0.14 MB**. Latency is dominated by per-request pandas overhead, not by the networks.
-- **Streamlit:** `make app` opens sliders for driver age, vehicle age and bonus-malus, with NN and GLM premiums side by side.
-- **Docker:** `docker build -f serve/Dockerfile -t fremtpl-pricing .` *(Docker was not available on the dev machine, so the image has not been built or tested.)*
+- **Model size:** 0.15 MB for the whole bundle: weights, GLM coefficients, preprocessing and segmenter.
+- **Docker:** the CI-built image is 1.3 GB, almost all of it CPU PyTorch.
+- **Latency work:** the first version took 39 ms at p50 because preprocessing built a pandas frame for every model on every request. Rewriting it in numpy gave bit-identical inputs and a 4× speed-up.
+
+`make app` opens the Streamlit premium explorer. Sliders for driver age, vehicle age and bonus-malus show NN and GLM premiums side by side, with curves of how each slider moves the premium:
+
+![Streamlit premium explorer](reports/figures/streamlit_app.jpg)
 
 ## Data decisions
 
 Counts are from `data/processed/cleaning_report.json`.
 
-- **Source:** the [mabilton/fremtpl2](https://huggingface.co/datasets/mabilton/fremtpl2) mirror. OpenML 41214 timed out. The tables are identical: 678,013 policies and 26,639 claim rows.
+- **Source:** the Hugging Face mirror [mabilton/fremtpl2](https://huggingface.co/datasets/mabilton/fremtpl2), both tables. OpenML 41214 repeatedly timed out. The mirror has **678,013 policies** (verified) and 26,639 claim rows, the same counts as OpenML.
 - **Consistency rule:** `ClaimNb` is kept exactly as published, so no frequency rows are dropped and the GLM stays comparable with Noll, Salzmann & Wüthrich (2018). Severity rows are used only for policies whose number of rows equals their `ClaimNb`.
-  - 9,117 policies don't match; 9,116 of them have claims but no amounts (9,658 claims in total).
-  - 195 orphan severity rows (6 policies missing from the frequency table) and 1 partial row are dropped, leaving 26,443 claims.
+  - **9,117 policies don't match**; 9,116 of them have claims but no amounts (9,658 claims in total).
+  - **196 severity rows are dropped**: 195 orphans whose 6 policies are missing from the frequency table, and 1 partial row. 26,443 claims are kept.
 - **Caps:** as in the reference analysis: ClaimNb ≤ 4 (9 rows), Exposure ≤ 1 (1,224), VehAge ≤ 20 (8,322), DrivAge ≤ 90 (401), BonusMalus ≤ 150 (209). Density enters as log(Density).
-- **Split:** 80/10/10 train/val/test, stratified on ClaimNb > 0, seed 2018. The test claim rate (0.1004) matches train (0.1007).
-- **Exposure:** always enters as an offset or multiplier (an `init_score` for LightGBM, and the GLM skip connection for CANN), never as a feature.
+- **Split:** `split_grouped` with seed 2018 (see above). Exposure always enters as an offset or multiplier, never as a feature: `init_score` for LightGBM, and the GLM skip connection for CANN.
+
+## Test-set discipline
+
+The headline numbers come from **one** evaluation of the grouped test split, run after every model and configuration had been chosen on validation.
+
+The earlier version of this project used the random split as its main split. Its test set was evaluated three times. The reruns fixed bugs in the evaluation code (a Lorenz curve that ranked by exposure-scaled premium instead of premium per year, and a clipped plot label). No model, hyper-parameter or selection changed between those runs. That random-split test set appears here only in the I7 sensitivity table.
 
 ## Reproducibility
 
-- **Configs:** every run starts from a YAML file in `configs/` (15 experiment configs, all inheriting from `base.yaml`).
-- **Seeds:** fixed seeds throughout. Neural nets and LightGBM use 5 seeds on the main split and 3 on the grouped split. The VAE and autoencoder use 3 seeds.
-- **Tracking:** params, per-epoch validation metrics and final metrics are logged to MLflow (`mlflow ui --backend-store-uri sqlite:///mlflow.db`).
-- **NN setup:** Adam, learning rate 1e-3, batch 5,000 (1,000 for the 21K-claim severity net), up to 500 epochs, early stopping on validation deviance with patience 20.
-- **Compute:** everything ran on a laptop CPU (Apple M4) in under an hour, so the RunPod budget was **$0**. The models are too small for a GPU to help. On RunPod the same `make all` command works unchanged.
-- **Known macOS issue:** LightGBM and PyTorch ship separate `libomp` copies, and loading both in one process crashes PyTorch's multi-threaded code. Training processes therefore load only one of them, and `src/eval.py` loads LightGBM first and runs PyTorch single-threaded.
+- **Configs:** every run starts from a YAML file in `configs/`: 15 experiment configs, all inheriting from `base.yaml`.
+- **Seeds:** fixed throughout. 5 seeds for every seeded headline model, 3 for the sensitivity runs, the VAE and the autoencoder.
+- **Tracking:** params, per-epoch validation metrics and final metrics are logged to MLflow (`mlflow ui --backend-store-uri sqlite:///mlflow.db`, experiment `freMTPL2-pricing-v2`).
+- **Training setup:**
+  - Frequency nets: Adam, lr 1e-3, batch 5,000.
+  - Severity net: lr 1e-4, batch 1,000, patience 100.
+  - AE/VAE: lr 3e-3, patience 30, cap 2,000 epochs. Every run stopped early, at best epochs 251–1,740 (the old 200-epoch cap had cut them all off).
+  - All nets use early stopping on validation deviance or loss.
+- **Compute:** everything ran on a laptop CPU (Apple M4). The full pipeline takes about 1.5 hours, dominated by the AE/VAE. RunPod budget: **$0**, because the models are too small for a GPU to help. `make all` runs unchanged on a RunPod CPU or GPU pod.
+- **Known macOS issue:** LightGBM and PyTorch ship separate `libomp` copies. Loading both in one process crashes multi-threaded torch. Training processes therefore load only one of them, and `src/eval.py` imports LightGBM first and runs torch single-threaded.
 
 ## Layout
 
 ```
-configs/      one YAML per experiment (inherits base.yaml)
+configs/      one YAML per experiment (inherits base.yaml); *_random = I7 sensitivity on the random split
 src/data/     load.py (download, consistency rule, caps, splits), features.py (GLM design, NN preprocessing), schema.py
 src/models/   glm.py, gbm.py, nets.py (PyTorch modules), neural.py (training wrappers)
-src/train.py  trains one config (train/val only)       src/eval.py   the only reader of the test split
-src/segmentation.py  I5/I6                            src/export.py serving bundle (selected on validation)
+src/train.py  trains one config (train/val only; LightGBM random search)
+src/eval.py   the only reader of the test split
+src/segmentation.py (I5/I6)   src/export.py (serving bundle, model chosen on validation)
 serve/        app.py (FastAPI), schemas.py, predictor.py, streamlit_app.py, benchmark.py, Dockerfile
 notebooks/    01_eda.ipynb: analysis only, train split only
 reports/      figures/, tables/, segmentation_report.md, results.json
-tests/        data rules, metrics vs sklearn, CANN-starts-at-GLM, exposure offset, save/load, API validation
+tests/        data rules, grouped split, metrics vs sklearn, CANN-starts-at-GLM, exposure offset, save/load, API validation
+.github/      CI: Docker build + /quote smoke test, unit tests
 ```
 
 ## Limitations
 
-- **Fairness / regulation:** the data has no protected attributes, but **DrivAge** (age) and **Region** (a geographic proxy for income and ethnicity) can act as proxies. Insurance pricing is regulated; for example, the EU's 2012 Test-Achats ruling bans gender-based premiums, and age and geography rating face scrutiny. A real deployment would need a proxy-discrimination review, and the young-driver behaviour shown above deserves one.
-- **One portfolio, one year, one country.** There is no time-based split, so the results say nothing about drift.
-- **Uneven tuning effort.** LightGBM received a small hand-chosen configuration and the NNs use the literature architecture. A larger search could reorder LightGBM and the NNs, but probably not the GLM.
-- **Missing severities.** The assumption that the 27% of claims without amounts are missing at random is untestable here.
+- **Fairness / regulation:** the data has no protected attributes, but **DrivAge** (age) and **Region** (a geographic proxy for income and ethnicity) can act as proxies. Insurance pricing is regulated; for example, the EU Test-Achats ruling bans gender-based premiums, and age and geography rating face scrutiny. A real deployment needs a proxy-discrimination review, and the young-driver and over-70 behaviour above deserves one.
+- **Grouping is by exact rating factors.** Near-duplicates (for example the same insured one year older) can still straddle the split, so the grouped split is conservative but not perfect.
+- **One portfolio, one period, one country.** There is no time-based split, so nothing is said about drift.
+- **Missing severities.** The assumption that the 27.9% of claims without amounts are missing at random is untestable here.
 - **Pure premium only.** There are no expense, profit or reinsurance loadings, and large losses are handled with a single flat load.

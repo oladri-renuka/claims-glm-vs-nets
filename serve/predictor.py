@@ -36,7 +36,9 @@ class Predictor:
     def quote_frame(self, df: pd.DataFrame, model: str = "nn") -> pd.DataFrame:
         annual = df.assign(Exposure=1.0)
         if model == "nn":
-            freq = np.mean([m.predict(annual) for m in self.freq_nn], axis=0)
+            # CANN seeds share one frozen GLM: compute its log-prediction once per request.
+            lp = self.freq_nn[0].glm.linear_predictor(annual) if self.freq_nn[0].cann else None
+            freq = np.mean([m.predict(annual, glm_lp=lp) for m in self.freq_nn], axis=0)
             sev = np.mean([m.predict(annual) for m in self.sev_nn], axis=0)
         elif model == "glm":
             freq, sev = self.freq_glm.predict(annual), self.sev_glm.predict(annual)

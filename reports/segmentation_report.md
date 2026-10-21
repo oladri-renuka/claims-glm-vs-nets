@@ -9,10 +9,10 @@ All numbers are measured on the held-out **test** split; clusterers were fitted 
 
 | method       |   max_min_ratio |   max_min_std |   freq_cv |   deviance_reduction_pct |   silhouette |   ari |   min_exposure_share |
 |:-------------|----------------:|--------------:|----------:|-------------------------:|-------------:|------:|---------------------:|
-| glm_quantile |           4.793 |       nan     |     0.595 |                    4.534 |        0.460 | 1.000 |                0.110 |
-| raw_kmeans   |           2.511 |         0.006 |     0.324 |                    1.556 |        0.122 | 0.998 |                0.093 |
-| vae_gmm      |           2.340 |         0.179 |     0.236 |                    0.775 |        0.106 | 0.643 |                0.026 |
-| vae_kmeans   |           2.302 |         0.072 |     0.313 |                    1.442 |        0.214 | 0.531 |                0.101 |
+| glm_quantile |           4.679 |       nan     |     0.591 |                    4.464 |        0.463 | 1.000 |                0.110 |
+| raw_kmeans   |           2.646 |         0.001 |     0.332 |                    1.617 |        0.121 | 0.998 |                0.094 |
+| vae_gmm      |           2.290 |         0.052 |     0.189 |                    0.530 |        0.079 | 0.665 |                0.029 |
+| vae_kmeans   |           2.227 |         0.137 |     0.287 |                    1.196 |        0.209 | 0.646 |                0.099 |
 
 Full sweep over k = 4..10: [tables/segmentation.md](tables/segmentation.md).
 `ari` is the mean pairwise adjusted Rand index across seeds (GLM quantiles are deterministic, so 1 by construction).
@@ -22,40 +22,40 @@ Full sweep over k = 4..10: [tables/segmentation.md](tables/segmentation.md).
 
 |   segment |   policies |   exposure |   claims |   DrivAge |   BonusMalus |   VehAge |   VehPower |   Density |   diesel_share | top_area   | top_brand   | top_region                  |   exposure_share |   frequency |
 |----------:|-----------:|-----------:|---------:|----------:|-------------:|---------:|-----------:|----------:|---------------:|:-----------|:------------|:----------------------------|-----------------:|------------:|
-|         2 |      10941 |   7377.246 |      553 |    49.000 |       50.000 |   10.000 |      6.000 |   138.000 |          0.000 | C          | B1          | Centre                      |            0.206 |       0.075 |
-|         0 |      15602 |   9593.541 |      735 |    46.000 |       50.000 |    7.000 |      6.000 |    85.000 |          0.888 | C          | B2          | Centre                      |            0.268 |       0.077 |
-|         5 |      11988 |   5876.737 |      601 |    45.000 |       50.000 |    6.000 |      7.000 |  2642.000 |          0.823 | E          | B1          | Ile-de-France               |            0.164 |       0.102 |
-|         3 |       8674 |   4680.707 |      483 |    47.000 |       50.000 |    5.000 |      5.000 |  3321.000 |          0.000 | E          | B1          | Ile-de-France               |            0.131 |       0.103 |
-|         4 |      10855 |   4335.649 |      546 |    48.000 |       50.000 |    2.000 |      7.000 |   267.000 |          0.441 | C          | B12         | Provence-Alpes-Cotes-D'Azur |            0.121 |       0.126 |
-|         1 |       9742 |   3982.857 |      682 |    28.000 |       90.000 |    8.000 |      6.000 |   496.000 |          0.483 | C          | B2          | Centre                      |            0.111 |       0.171 |
+|         4 |      10580 |   7098.707 |      526 |    49.000 |       50.000 |   10.000 |      6.000 |   106.000 |          0.000 | C          | B1          | Centre                      |            0.197 |       0.074 |
+|         5 |      14795 |   9114.325 |      733 |    46.000 |       50.000 |    7.000 |      6.000 |    88.000 |          0.932 | C          | B2          | Centre                      |            0.253 |       0.080 |
+|         2 |      10932 |   5341.179 |      520 |    44.000 |       50.000 |    6.000 |      6.000 |  2558.000 |          0.898 | E          | B2          | Ile-de-France               |            0.148 |       0.097 |
+|         0 |      11174 |   6182.622 |      618 |    48.000 |       50.000 |    7.000 |      6.000 |  3184.000 |          0.000 | E          | B1          | Ile-de-France               |            0.172 |       0.100 |
+|         1 |      10830 |   4314.827 |      543 |    49.000 |       50.000 |    2.000 |      7.000 |   251.000 |          0.491 | C          | B12         | Provence-Alpes-Cotes-D'Azur |            0.120 |       0.126 |
+|         3 |       9492 |   3939.950 |      687 |    28.000 |       90.000 |    8.000 |      6.000 |   579.000 |          0.471 | D          | B2          | Centre                      |            0.109 |       0.174 |
 
 ## GLM-frequency segments (k = 6) for comparison
 
 |   segment |   policies |   exposure |   claims |   DrivAge |   BonusMalus |   VehAge |   VehPower |   Density |   diesel_share | top_area   | top_brand   | top_region    |   exposure_share |   frequency |
 |----------:|-----------:|-----------:|---------:|----------:|-------------:|---------:|-----------:|----------:|---------------:|:-----------|:------------|:--------------|-----------------:|------------:|
-|         0 |      11305 |   6980.828 |      377 |    39.000 |       50.000 |   12.000 |      6.000 |   115.000 |          0.553 | A          | B2          | Centre        |            0.195 |       0.054 |
-|         1 |      11424 |   6760.367 |      449 |    46.000 |       50.000 |    8.000 |      6.000 |   214.000 |          0.524 | C          | B1          | Centre        |            0.189 |       0.066 |
-|         2 |      11185 |   6536.098 |      506 |    49.000 |       50.000 |    6.000 |      6.000 |   298.000 |          0.513 | C          | B1          | Centre        |            0.182 |       0.077 |
-|         3 |      11236 |   6233.479 |      598 |    49.000 |       50.000 |    5.000 |      6.000 |   578.500 |          0.462 | C          | B12         | Centre        |            0.174 |       0.096 |
-|         4 |      11276 |   5380.052 |      646 |    41.000 |       72.000 |    6.000 |      6.000 |  1109.000 |          0.416 | E          | B12         | Rhone-Alpes   |            0.150 |       0.120 |
-|         5 |      11376 |   3955.912 |     1024 |    41.000 |       80.000 |    0.000 |      6.000 |   775.000 |          0.470 | E          | B12         | Ile-de-France |            0.110 |       0.259 |
+|         0 |      11306 |   6942.607 |      385 |    39.000 |       50.000 |   11.000 |      6.000 |   118.000 |          0.533 | A          | B2          | Centre        |            0.193 |       0.055 |
+|         1 |      11505 |   6899.185 |      470 |    47.000 |       50.000 |    8.000 |      6.000 |   214.000 |          0.517 | C          | B2          | Centre        |            0.192 |       0.068 |
+|         2 |      11168 |   6497.514 |      513 |    49.000 |       50.000 |    6.000 |      6.000 |   303.000 |          0.520 | C          | B1          | Centre        |            0.181 |       0.079 |
+|         3 |      11216 |   6228.328 |      556 |    48.000 |       50.000 |    5.000 |      6.000 |   528.000 |          0.472 | C          | B12         | Centre        |            0.173 |       0.089 |
+|         4 |      11357 |   5481.634 |      680 |    41.000 |       72.000 |    6.000 |      6.000 |  1064.000 |          0.432 | E          | B12         | Centre        |            0.152 |       0.124 |
+|         5 |      11251 |   3942.341 |     1023 |    41.000 |       80.000 |    0.000 |      6.000 |   824.000 |          0.482 | E          | B12         | Ile-de-France |            0.110 |       0.259 |
 
 ## Autoencoder anomalies: top 1% of test policies by reconstruction error
 
-* Cut-off score 6.07; 1.00% of test policies exceed the training 99th-percentile threshold used by the API.
-* Overlap of the top-1% sets across 3 autoencoder seeds (mean Jaccard): 0.25.
-* Observed claim frequency: flagged 0.2042 vs rest 0.0995.
+* Cut-off score 4.28; 0.98% of test policies exceed the training 99th-percentile threshold used by the API.
+* Overlap of the top-1% sets across 3 autoencoder seeds (mean Jaccard): 0.26.
+* Observed claim frequency: flagged 0.1537 vs rest 0.1003.
 
 ### Continuous features (medians)
 
 |            |   rest_median |   top1pct_median |
 |:-----------|--------------:|-----------------:|
-| DrivAge    |        44.000 |           57.000 |
-| VehAge     |         6.000 |            6.000 |
-| VehPower   |         6.000 |            7.000 |
-| BonusMalus |        50.000 |           80.000 |
-| Density    |       393.000 |          473.000 |
-| Exposure   |         0.490 |            0.440 |
+| DrivAge    |        44.000 |           53.000 |
+| VehAge     |         6.000 |            7.000 |
+| VehPower   |         6.000 |            6.000 |
+| BonusMalus |        50.000 |           79.000 |
+| Density    |       392.000 |          706.500 |
+| Exposure   |         0.490 |            0.450 |
 
 ### Over-represented categories among flagged policies (share and lift vs rest)
 
@@ -63,47 +63,47 @@ Full sweep over k = 4..10: [tables/segmentation.md](tables/segmentation.md).
 
 | VehBrand   |   False |   True |   lift |
 |:-----------|--------:|-------:|-------:|
-| B14        |   0.005 |  0.063 | 11.808 |
-| B5         |   0.050 |  0.233 |  4.699 |
-| B6         |   0.041 |  0.153 |  3.692 |
-| B4         |   0.037 |  0.102 |  2.768 |
+| B14        |   0.004 |  0.188 | 45.779 |
+| B13        |   0.016 |  0.093 |  5.679 |
+| B6         |   0.041 |  0.119 |  2.905 |
+| B3         |   0.079 |  0.194 |  2.456 |
 
 **Region**
 
 | Region            |   False |   True |   lift |
 |:------------------|--------:|-------:|-------:|
-| Franche-Comte     |   0.002 |  0.021 | 11.161 |
-| Champagne-Ardenne |   0.004 |  0.044 | 10.745 |
-| Alsace            |   0.003 |  0.019 |  5.815 |
-| Corse             |   0.006 |  0.028 |  4.368 |
+| Franche-Comte     |   0.002 |  0.010 |  5.441 |
+| Corse             |   0.006 |  0.015 |  2.625 |
+| Alsace            |   0.003 |  0.006 |  1.974 |
+| Champagne-Ardenne |   0.004 |  0.007 |  1.690 |
 
 **Area**
 
 | Area   |   False |   True |   lift |
 |:-------|--------:|-------:|-------:|
-| F      |   0.026 |  0.046 |  1.776 |
-| E      |   0.203 |  0.216 |  1.066 |
-| D      |   0.224 |  0.230 |  1.024 |
-| A      |   0.153 |  0.152 |  0.989 |
+| F      |   0.028 |  0.082 |  2.903 |
+| E      |   0.201 |  0.254 |  1.267 |
+| D      |   0.223 |  0.206 |  0.923 |
+| C      |   0.284 |  0.249 |  0.876 |
 
 **VehGas**
 
 | VehGas   |   False |   True |   lift |
 |:---------|--------:|-------:|-------:|
-| Regular  |   0.510 |  0.576 |  1.130 |
-| Diesel   |   0.490 |  0.424 |  0.865 |
+| Regular  |   0.505 |  0.725 |  1.435 |
+| Diesel   |   0.495 |  0.275 |  0.556 |
 
 ### Ten most unusual test policies
 
-|      IDpol |   DrivAge |   VehAge |   VehPower |   BonusMalus | VehBrand   | VehGas   | Area   |   Density | Region           |   Exposure |   ClaimNb |   score |
-|-----------:|----------:|---------:|-----------:|-------------:|:-----------|:---------|:-------|----------:|:-----------------|-----------:|----------:|--------:|
-|   95917.00 |        80 |        5 |          4 |          115 | B2         | Regular  | C      |       155 | Centre           |       0.01 |         0 |   24.23 |
-| 5107463.00 |        77 |        0 |          8 |          114 | B12        | Diesel   | A      |        19 | Rhone-Alpes      |       0.07 |         0 |   22.50 |
-|  152108.00 |        48 |        3 |         15 |           50 | B5         | Regular  | E      |      3866 | Centre           |       1.00 |         0 |   20.93 |
-| 2063253.00 |        83 |        1 |          6 |          112 | B10        | Diesel   | C      |       399 | Centre           |       0.72 |         2 |   20.26 |
-|  100629.00 |        75 |        0 |         15 |           97 | B14        | Regular  | E      |      4348 | Aquitaine        |       0.54 |         1 |   19.61 |
-| 1100630.00 |        76 |        1 |         15 |           97 | B14        | Regular  | E      |      4348 | Aquitaine        |       1.00 |         0 |   19.24 |
-|  167281.00 |        55 |        8 |         15 |           50 | B5         | Regular  | E      |      3457 | Rhone-Alpes      |       0.89 |         0 |   19.06 |
-| 2225541.00 |        40 |       14 |         15 |           50 | B5         | Regular  | A      |        17 | Rhone-Alpes      |       0.08 |         0 |   19.00 |
-| 2287015.00 |        40 |       14 |         15 |           50 | B5         | Regular  | A      |        17 | Rhone-Alpes      |       0.39 |         0 |   19.00 |
-| 1090082.00 |        81 |       12 |          5 |          101 | B2         | Diesel   | C      |       270 | Poitou-Charentes |       0.41 |         0 |   18.51 |
+|      IDpol |   DrivAge |   VehAge |   VehPower |   BonusMalus | VehBrand   | VehGas   | Area   |   Density | Region             |   Exposure |   ClaimNb |   score |
+|-----------:|----------:|---------:|-----------:|-------------:|:-----------|:---------|:-------|----------:|:-------------------|-----------:|----------:|--------:|
+| 1077294.00 |        79 |       10 |          6 |          106 | B1         | Regular  | D      |      1466 | Nord-Pas-de-Calais |       1.00 |         1 |   21.89 |
+| 3113589.00 |        25 |        3 |         15 |           76 | B6         | Regular  | C      |       107 | Rhone-Alpes        |       0.95 |         0 |   17.79 |
+| 3075584.00 |        53 |       14 |         14 |           50 | B6         | Regular  | C      |       289 | Rhone-Alpes        |       0.27 |         0 |   17.40 |
+| 3063254.00 |        84 |        2 |          6 |          112 | B10        | Diesel   | C      |       399 | Centre             |       0.04 |         0 |   16.89 |
+| 4181976.00 |        19 |       12 |         15 |          100 | B3         | Regular  | C      |       302 | Alsace             |       0.48 |         0 |   16.85 |
+| 4137800.00 |        33 |       15 |         14 |           50 | B6         | Regular  | B      |        81 | Centre             |       1.00 |         0 |   16.60 |
+| 2119275.00 |        31 |       13 |         14 |           50 | B6         | Regular  | B      |        81 | Centre             |       1.00 |         0 |   15.89 |
+| 3239150.00 |        35 |       11 |         14 |           51 | B6         | Regular  | C      |       223 | Midi-Pyrenees      |       0.08 |         0 |   15.73 |
+| 3245868.00 |        35 |       11 |         14 |           51 | B6         | Regular  | C      |       223 | Midi-Pyrenees      |       0.07 |         0 |   15.73 |
+| 3252596.00 |        35 |       11 |         14 |           51 | B6         | Regular  | C      |       223 | Midi-Pyrenees      |       0.08 |         0 |   15.73 |

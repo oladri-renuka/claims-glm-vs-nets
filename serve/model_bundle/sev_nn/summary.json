@@ -22,14 +22,14 @@
         0.1,
         0.1
       ],
-      "column": "split"
+      "column": "split_grouped"
     },
     "artifacts_dir": "artifacts",
     "tracking": {
       "enabled": true,
       "backend": "mlflow",
       "uri": "sqlite:///mlflow.db",
-      "experiment": "freMTPL2-pricing"
+      "experiment": "freMTPL2-pricing-v2"
     },
     "nn_defaults": {
       "lr": 0.001,
@@ -57,49 +57,52 @@
     ],
     "params": {
       "categorical_encoding": "embedding",
-      "batch_size": 1000
+      "batch_size": 1000,
+      "lr": 0.0001,
+      "patience": 100,
+      "max_epochs": 3000
     }
   },
   "seeds": {
     "0": {
-      "val_gamma_deviance": 1.2336080589238998,
-      "train_gamma_deviance": 1.1748281815127772,
-      "epochs": 22,
-      "best_epoch": 1,
-      "train_seconds": 1.5778212547302246
+      "val_gamma_deviance": 1.1079482960658893,
+      "train_gamma_deviance": 1.1943516737521644,
+      "epochs": 616,
+      "best_epoch": 515,
+      "train_seconds": 28.42425799369812
     },
     "1": {
-      "val_gamma_deviance": 1.230990501771547,
-      "train_gamma_deviance": 1.175663940667367,
-      "epochs": 21,
-      "best_epoch": 0,
-      "train_seconds": 1.6734588146209717
+      "val_gamma_deviance": 1.1106191252141326,
+      "train_gamma_deviance": 1.2028850592037799,
+      "epochs": 288,
+      "best_epoch": 187,
+      "train_seconds": 14.036086082458496
     },
     "2": {
-      "val_gamma_deviance": 1.229119707584325,
-      "train_gamma_deviance": 1.1743326740900921,
-      "epochs": 22,
-      "best_epoch": 1,
-      "train_seconds": 1.7067909240722656
+      "val_gamma_deviance": 1.1058517260941305,
+      "train_gamma_deviance": 1.1924793040748298,
+      "epochs": 568,
+      "best_epoch": 467,
+      "train_seconds": 27.475584983825684
     },
     "3": {
-      "val_gamma_deviance": 1.2346201133729653,
-      "train_gamma_deviance": 1.1710400978174562,
-      "epochs": 23,
-      "best_epoch": 2,
-      "train_seconds": 1.6662700176239014
+      "val_gamma_deviance": 1.1059292152513835,
+      "train_gamma_deviance": 1.1933948454841017,
+      "epochs": 644,
+      "best_epoch": 543,
+      "train_seconds": 30.061505794525146
     },
     "4": {
-      "val_gamma_deviance": 1.2379367755191564,
-      "train_gamma_deviance": 1.171055208032901,
-      "epochs": 23,
-      "best_epoch": 2,
-      "train_seconds": 1.5400152206420898
+      "val_gamma_deviance": 1.1116428884129952,
+      "train_gamma_deviance": 1.1988353996196295,
+      "epochs": 426,
+      "best_epoch": 325,
+      "train_seconds": 19.770925998687744
     }
   },
   "val_metric": {
     "name": "val_gamma_deviance",
-    "mean": 1.2332550314343789,
-    "std": 0.003396167057192245
+    "mean": 1.108398250207706,
+    "std": 0.0026572231880148127
   }
 }

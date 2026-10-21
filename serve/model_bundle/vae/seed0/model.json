@@ -1,9 +1,9 @@
 {
   "params": {
-    "lr": 0.001,
+    "lr": 0.003,
     "batch_size": 5000,
-    "max_epochs": 200,
-    "patience": 20,
+    "max_epochs": 2000,
+    "patience": 30,
     "hidden": [
       32,
       16
@@ -18,20 +18,20 @@
   "variational": true,
   "pre": {
     "mean": {
-      "VehPower": 6.454936302796777,
-      "VehAge": 6.980783908851238,
-      "DrivAge": 45.50149702254752,
-      "BonusMalus": 59.75355358492653,
-      "LogDensity": 5.979739951620443,
-      "VehGasDiesel": 0.49014583064471523
+      "VehPower": 6.454367460716913,
+      "VehAge": 6.980346933771379,
+      "DrivAge": 45.47930436257511,
+      "BonusMalus": 59.75930893477062,
+      "LogDensity": 5.9808486373538114,
+      "VehGasDiesel": 0.48977985247294936
     },
     "std": {
-      "VehPower": 2.051345489763602,
-      "VehAge": 5.398379459556811,
-      "DrivAge": 14.126998457811165,
-      "BonusMalus": 15.60458930886539,
-      "LogDensity": 1.870321756940228,
-      "VehGasDiesel": 0.4999033467323908
+      "VehPower": 2.050775597381376,
+      "VehAge": 5.398830058618259,
+      "DrivAge": 14.114758675331604,
+      "BonusMalus": 15.612849374145453,
+      "LogDensity": 1.869479430011722,
+      "VehGasDiesel": 0.4998959984827209
     }
   },
   "threshold": null

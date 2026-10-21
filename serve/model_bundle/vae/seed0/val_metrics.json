@@ -1,6 +1,6 @@
 {
-  "val_loss": 9.396909713745117,
-  "epochs": 200,
-  "best_epoch": 195,
-  "train_seconds": 578.7668571472168
+  "val_loss": 9.335755348205566,
+  "epochs": 820,
+  "best_epoch": 789,
+  "train_seconds": 1178.6362490653992
 }

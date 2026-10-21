@@ -75,10 +75,10 @@ class NeuralFrequency:
         self.p, self.seed, self.glm = params, seed, glm
         self.cann = glm is not None
 
-    def _offset(self, df: pd.DataFrame) -> torch.Tensor:
+    def _offset(self, df: pd.DataFrame, glm_lp: np.ndarray | None = None) -> torch.Tensor:
         off = np.log(df["Exposure"].to_numpy(float))
         if self.cann:
-            off = off + self.glm.linear_predictor(df)
+            off = off + (self.glm.linear_predictor(df) if glm_lp is None else glm_lp)
         return torch.from_numpy(off.astype(np.float32))
 
     def fit(self, train: pd.DataFrame, val: pd.DataFrame, log=None) -> "NeuralFrequency":
@@ -104,10 +104,12 @@ class NeuralFrequency:
         return self
 
     @torch.no_grad()
-    def predict(self, df: pd.DataFrame) -> np.ndarray:
+    def predict(self, df: pd.DataFrame, glm_lp: np.ndarray | None = None) -> np.ndarray:
+        """glm_lp: optional precomputed GLM linear predictor (CANN only), so a seed ensemble
+        sharing one frozen GLM builds the GLM design matrix once."""
         self.net.eval()
         xc, xk = _tensors(self.pre, df)
-        return torch.exp(self.net(xc, xk) + self._offset(df)).numpy().astype(float)
+        return torch.exp(self.net(xc, xk) + self._offset(df, glm_lp)).numpy().astype(float)
 
     def save(self, d: Path) -> None:
         torch.save(self.net.state_dict(), d / "weights.pt")

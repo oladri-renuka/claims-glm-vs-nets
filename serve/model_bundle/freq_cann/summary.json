@@ -1,0 +1,110 @@
+{
+  "name": "freq_cann",
+  "config": {
+    "data": {
+      "raw_dir": "data/raw",
+      "processed_dir": "data/processed",
+      "freq_url": "https://huggingface.co/datasets/mabilton/fremtpl2/resolve/main/freMTPL2freq.csv",
+      "sev_url": "https://huggingface.co/datasets/mabilton/fremtpl2/resolve/main/freMTPL2sev.csv",
+      "caps": {
+        "ClaimNb": 4,
+        "Exposure": 1.0,
+        "VehAge": 20,
+        "DrivAge": 90,
+        "BonusMalus": 150
+      },
+      "severity_cap_quantile": 0.995
+    },
+    "split": {
+      "seed": 2018,
+      "fractions": [
+        0.8,
+        0.1,
+        0.1
+      ],
+      "column": "split_grouped"
+    },
+    "artifacts_dir": "artifacts",
+    "tracking": {
+      "enabled": true,
+      "backend": "mlflow",
+      "uri": "sqlite:///mlflow.db",
+      "experiment": "freMTPL2-pricing-v2"
+    },
+    "nn_defaults": {
+      "lr": 0.001,
+      "batch_size": 5000,
+      "max_epochs": 500,
+      "patience": 20,
+      "hidden": [
+        20,
+        15,
+        10
+      ],
+      "activation": "tanh",
+      "embedding_dim": 2,
+      "num_threads": 2
+    },
+    "name": "freq_cann",
+    "task": "frequency",
+    "model": "cann",
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "params": {
+      "categorical_encoding": "embedding",
+      "glm_run": "freq_glm"
+    }
+  },
+  "seeds": {
+    "0": {
+      "val_poisson_deviance": 0.31241248612736267,
+      "train_poisson_deviance": 0.3052216505565224,
+      "val_balance": 0.9922585141128117,
+      "epochs": 139,
+      "best_epoch": 118,
+      "train_seconds": 100.28687691688538
+    },
+    "1": {
+      "val_poisson_deviance": 0.3120317336714912,
+      "train_poisson_deviance": 0.30517745399428803,
+      "val_balance": 0.983921719609407,
+      "epochs": 119,
+      "best_epoch": 98,
+      "train_seconds": 99.36035299301147
+    },
+    "2": {
+      "val_poisson_deviance": 0.31236388353216665,
+      "train_poisson_deviance": 0.30475103178563273,
+      "val_balance": 1.0216350467563013,
+      "epochs": 137,
+      "best_epoch": 116,
+      "train_seconds": 97.6144540309906
+    },
+    "3": {
+      "val_poisson_deviance": 0.31207273227170307,
+      "train_poisson_deviance": 0.3040660245049098,
+      "val_balance": 1.0245170684657063,
+      "epochs": 194,
+      "best_epoch": 173,
+      "train_seconds": 128.62203311920166
+    },
+    "4": {
+      "val_poisson_deviance": 0.31198529694836896,
+      "train_poisson_deviance": 0.30460539298744205,
+      "val_balance": 0.9842599243764875,
+      "epochs": 142,
+      "best_epoch": 121,
+      "train_seconds": 95.89763116836548
+    }
+  },
+  "val_metric": {
+    "name": "val_poisson_deviance",
+    "mean": 0.3121732265102185,
+    "std": 0.00019939414485948675
+  }
+}

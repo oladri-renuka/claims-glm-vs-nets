@@ -63,7 +63,7 @@ def lgbm_search(cfg: dict, train, val, tracker: Tracker) -> dict:
     rng = np.random.default_rng(sc["seed"])
     trials = []
     for i in range(sc["n_trials"]):
-        trial = {k: v[rng.integers(len(v))] for k, v in sc["space"].items()}
+        trial = {k: v[int(rng.integers(len(v)))] for k, v in sc["space"].items()}
         params = {**cfg["params"], **trial}
         with tracker.run(f"{cfg['name']}-search{i}", {**params, "trial": i}) as t:
             m = LGBMPoisson(params, sc["seed"]).fit(train, val)
@@ -75,9 +75,9 @@ def lgbm_search(cfg: dict, train, val, tracker: Tracker) -> dict:
     out = ROOT / cfg["artifacts_dir"] / cfg["name"]
     out.mkdir(parents=True, exist_ok=True)
     table.to_csv(out / "search.csv", index=False)
-    best = table.iloc[0].drop(["trial", "best_iteration", "val_poisson_deviance"]).to_dict()
-    best = {k: (v.item() if hasattr(v, "item") else v) for k, v in best.items()}
-    return {**cfg["params"], **best}
+    # Read the winner from the typed trial dicts: a pandas row would turn ints (num_leaves) into floats.
+    best = min(trials, key=lambda t: t["val_poisson_deviance"])
+    return {**cfg["params"], **{k: best[k] for k in sc["space"]}}
 
 
 def val_metrics(cfg: dict, model, train, val) -> dict:

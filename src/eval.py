@@ -178,7 +178,7 @@ def double_lift(actual, p_model, p_glm, expo, label, fname, what):
     ax.plot(x, d.m / d.e, color=COLORS[label], marker="o", ms=5, label=label)
     ax.plot(x, d.g / d.e, color=COLORS["GLM"], marker="o", ms=5, label="GLM")
     ax.set(xlabel=f"Decile of {label} / GLM predicted ratio", ylabel=f"{what} per policy-year",
-           title=f"Double-lift on {what.lower()}: {label} vs GLM (test)", xticks=list(x))
+           title=f"Double-lift, {what.split(' (')[0].lower()}: {label} vs GLM (test)", xticks=list(x))
     ax.legend()
     fig.savefig(FIG / fname)
     plt.close(fig)

@@ -1,8 +1,0 @@
-{
-  "val_poisson_deviance": 0.30741598794573505,
-  "train_poisson_deviance": 0.3063897657643288,
-  "val_balance": 1.019926258166609,
-  "epochs": 84,
-  "best_epoch": 63,
-  "train_seconds": 92.24687695503235
-}

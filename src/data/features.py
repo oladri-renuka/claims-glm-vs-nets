@@ -89,15 +89,23 @@ class NNPreprocessor:
         return self
 
     def transform(self, df: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
-        c = self._continuous(df)
-        x_cont = ((c - pd.Series(self.mean)) / pd.Series(self.std)).to_numpy(np.float32)
+        # Plain numpy (not a pandas frame per call): this runs once per model per API request.
+        dens = df["Density"].to_numpy(float)
+        raw = np.column_stack([
+            df["VehPower"].to_numpy(float), np.minimum(df["VehAge"].to_numpy(float), 20),
+            np.minimum(df["DrivAge"].to_numpy(float), 90), np.minimum(df["BonusMalus"].to_numpy(float), 150),
+            np.log(dens), (df["VehGas"].to_numpy() == "Diesel").astype(float),
+        ])
+        mean = np.array([self.mean[c] for c in NN_CONTINUOUS])
+        std = np.array([self.std[c] for c in NN_CONTINUOUS])
+        x_cont = ((raw - mean) / std).astype(np.float32)
         codes = []
         for col in NN_CATEGORICAL:
-            vocab = {v: i for i, v in enumerate(CATEGORIES[col])}
-            mapped = df[col].map(vocab)
-            if mapped.isna().any():
-                raise ValueError(f"unknown {col} values: {sorted(df.loc[mapped.isna(), col].unique())}")
-            codes.append(mapped.to_numpy(np.int64))
+            c = pd.Categorical(df[col].to_numpy(), categories=CATEGORIES[col]).codes.astype(np.int64)
+            if (c < 0).any():
+                bad = sorted(set(df[col].to_numpy()[c < 0]))
+                raise ValueError(f"unknown {col} values: {bad}")
+            codes.append(c)
         return x_cont, np.stack(codes, axis=1)
 
     @property

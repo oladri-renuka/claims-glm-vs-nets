@@ -1,7 +1,7 @@
 {
-  "val_gamma_deviance": 1.229119707584325,
-  "train_gamma_deviance": 1.1743326740900921,
-  "epochs": 22,
-  "best_epoch": 1,
-  "train_seconds": 1.7067909240722656
+  "val_gamma_deviance": 1.1058517260941305,
+  "train_gamma_deviance": 1.1924793040748298,
+  "epochs": 568,
+  "best_epoch": 467,
+  "train_seconds": 27.475584983825684
 }

@@ -1,5 +1,5 @@
 {
-  "val_poisson_deviance": 0.31493926324382604,
-  "train_poisson_deviance": 0.31364423359785953,
-  "val_balance": 1.0052905303540565
+  "val_poisson_deviance": 0.31781948786858655,
+  "train_poisson_deviance": 0.3128993553436598,
+  "val_balance": 0.9934254262227928
 }

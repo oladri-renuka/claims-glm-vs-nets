@@ -22,14 +22,14 @@
         0.1,
         0.1
       ],
-      "column": "split"
+      "column": "split_grouped"
     },
     "artifacts_dir": "artifacts",
     "tracking": {
       "enabled": true,
       "backend": "mlflow",
       "uri": "sqlite:///mlflow.db",
-      "experiment": "freMTPL2-pricing"
+      "experiment": "freMTPL2-pricing-v2"
     },
     "nn_defaults": {
       "lr": 0.001,
@@ -54,13 +54,13 @@
   },
   "seeds": {
     "0": {
-      "val_gamma_deviance": 1.2450259621961663,
-      "train_gamma_deviance": 1.1568307795800434
+      "val_gamma_deviance": 1.1236773229414057,
+      "train_gamma_deviance": 1.1938158392632492
     }
   },
   "val_metric": {
     "name": "val_gamma_deviance",
-    "mean": 1.2450259621961663,
+    "mean": 1.1236773229414057,
     "std": 0.0
   }
 }
