@@ -1,0 +1,12 @@
+inherit: base.yaml
+name: freq_lgbm_random
+task: frequency
+model: lgbm
+split: {column: split}   # I7 sensitivity: plain random split (twins can straddle train/test)
+seeds: [0, 1, 2]
+params_from: freq_lgbm   # reuse the configuration chosen by freq_lgbm's search
+params:
+  objective: poisson
+  subsample_freq: 1
+  n_estimators: 10000
+  early_stopping_rounds: 100

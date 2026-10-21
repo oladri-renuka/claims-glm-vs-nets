@@ -1,0 +1,77 @@
+# Builds the serving image exactly as deployed and checks that the running container
+# prices a policy and rejects bad input: "it works in Docker" is verified here, not claimed.
+name: docker-smoke
+
+on:
+  push:
+    branches: [main]
+    paths: ["serve/**", "src/**", "tests/**", ".github/workflows/docker.yml"]
+  pull_request:
+    paths: ["serve/**", "src/**", "tests/**", ".github/workflows/docker.yml"]
+  workflow_dispatch:
+
+jobs:
+  build-and-quote:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build serving image (linux/amd64)
+        run: docker build --platform linux/amd64 -f serve/Dockerfile -t glm-vs-nets:ci .
+
+      - name: Report image size
+        run: |
+          bytes=$(docker image inspect glm-vs-nets:ci --format '{{.Size}}')
+          echo "### Serving image: $((bytes / 1000000)) MB (linux/amd64, CPU-only PyTorch)" | tee -a "$GITHUB_STEP_SUMMARY"
+          docker history glm-vs-nets:ci --format '{{.Size}}\t{{.CreatedBy}}' | head -n 12
+
+      - name: Start container and wait for /health
+        run: |
+          docker run -d --name pricing -p 8000:8000 glm-vs-nets:ci
+          for i in $(seq 1 60); do
+            if curl -fsS localhost:8000/health; then echo; exit 0; fi
+            sleep 1
+          done
+          docker logs pricing
+          exit 1
+
+      - name: A valid policy is priced (NN and GLM)
+        run: |
+          for model in nn glm; do
+            curl -fsS -X POST "localhost:8000/quote?model=$model" -H 'content-type: application/json' \
+                 --data @tests/fixtures/quote_ok.json | tee "q_$model.json"; echo
+            jq -e '(.expected_frequency > 0 and .expected_frequency < 2)
+                   and .expected_severity > 0
+                   and ((.pure_premium - .expected_frequency * .expected_severity) as $d | $d * $d < 1e-12)
+                   and (.anomaly | type == "boolean")
+                   and .risk_segment >= 0' "q_$model.json"
+          done
+          echo "NN pure premium: $(jq .pure_premium q_nn.json) EUR, GLM: $(jq .pure_premium q_glm.json) EUR" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Unknown VehBrand is rejected with 422 and a clear message
+        run: |
+          code=$(curl -s -o err.json -w '%{http_code}' -X POST localhost:8000/quote \
+                 -H 'content-type: application/json' --data @tests/fixtures/quote_unknown_brand.json)
+          cat err.json; echo; echo "status: $code"
+          test "$code" = "422"
+          grep -q "unknown VehBrand 'B99'" err.json
+
+      - name: Container logs
+        if: always()
+        run: docker logs pricing || true
+
+  unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install (CPU-only PyTorch)
+        run: |
+          pip install --extra-index-url https://download.pytorch.org/whl/cpu torch==2.5.1
+          pip install -r requirements.txt
+      - name: pytest (synthetic data + the committed serving bundle)
+        run: python -m pytest -q

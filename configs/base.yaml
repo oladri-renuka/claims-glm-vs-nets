@@ -8,14 +8,14 @@ data:
   severity_cap_quantile: 0.995   # computed on training claims only
 split:
   seed: 2018
-  fractions: [0.8, 0.1, 0.1]     # train / val / test, stratified on ClaimNb > 0
-  column: split                 # "split_grouped" = robustness split (I7)
+  fractions: [0.8, 0.1, 0.1]     # train / val / test, stratified on ClaimNb > 0 (group-level for split_grouped)
+  column: split_grouped         # main split: identical risk profiles never straddle train/test; "split" = plain random split (I7 sensitivity)
 artifacts_dir: artifacts
 tracking:
   enabled: true
   backend: mlflow
   uri: sqlite:///mlflow.db
-  experiment: freMTPL2-pricing
+  experiment: freMTPL2-pricing-v2   # v2: grouped split is the main split
 nn_defaults:
   lr: 0.001
   batch_size: 5000

@@ -34,8 +34,10 @@ LOADERS = {("frequency", "homogeneous"): HomogeneousFrequency, ("frequency", "gl
            ("severity", "ffnn"): NeuralSeverity, ("autoencoder", "ae"): TabularAE, ("vae", "vae"): TabularAE}
 FREQ_RUNS = {"Homogeneous": "freq_homogeneous", "GLM": "freq_glm", "LightGBM": "freq_lgbm",
              "FFNN (one-hot)": "freq_ffnn_onehot", "FFNN (embeddings)": "freq_ffnn_emb", "CANN": "freq_cann"}
-GROUPED_RUNS = {"Homogeneous": "freq_homogeneous_grouped", "GLM": "freq_glm_grouped", "LightGBM": "freq_lgbm_grouped",
-                "FFNN (embeddings)": "freq_ffnn_emb_grouped", "CANN": "freq_cann_grouped"}
+# I7 sensitivity: the same models trained/tested on a plain random split, where ~33% of test
+# policies have an identical-profile twin in train.
+RANDOM_RUNS = {"Homogeneous": "freq_homogeneous_random", "GLM": "freq_glm_random", "LightGBM": "freq_lgbm_random",
+               "FFNN (embeddings)": "freq_ffnn_emb_random", "CANN": "freq_cann_random"}
 N_BOOT = 1000
 
 
@@ -163,22 +165,26 @@ def lorenz_section(test, freq_preds, sev_preds, load):
     return out
 
 
-def double_lift(test, p_model, p_glm, label):
-    expo, y = test.Exposure.to_numpy(float), test.ClaimNb.to_numpy(float)
+def double_lift(actual, p_model, p_glm, expo, label, fname, what):
+    """Deciles (equal exposure) of the model/GLM prediction ratio; each prediction is rescaled
+    so its total equals the actual total, which isolates ranking from overall level."""
+    p_model = p_model * actual.sum() / p_model.sum()
+    p_glm = p_glm * actual.sum() / p_glm.sum()
     b = weighted_quantile_bins(p_model / p_glm, expo, 10)
-    d = pd.DataFrame({"b": b, "y": y, "m": p_model, "g": p_glm, "e": expo}).groupby("b").sum()
+    d = pd.DataFrame({"b": b, "y": actual, "m": p_model, "g": p_glm, "e": expo}).groupby("b").sum()
     fig, ax = plt.subplots(figsize=(6, 4))
     x = d.index + 1
     ax.plot(x, d.y / d.e, color=COLORS["Actual"], marker="o", ms=5, label="Actual")
     ax.plot(x, d.m / d.e, color=COLORS[label], marker="o", ms=5, label=label)
     ax.plot(x, d.g / d.e, color=COLORS["GLM"], marker="o", ms=5, label="GLM")
-    ax.set(xlabel=f"Decile of {label} / GLM predicted ratio", ylabel="Claim frequency (per policy-year)",
-           title=f"Double-lift: {label} vs GLM (test)", xticks=list(x))
+    ax.set(xlabel=f"Decile of {label} / GLM predicted ratio", ylabel=f"{what} per policy-year",
+           title=f"Double-lift on {what.lower()}: {label} vs GLM (test)", xticks=list(x))
     ax.legend()
-    fig.savefig(FIG / "double_lift.png")
+    fig.savefig(FIG / fname)
     plt.close(fig)
-    d["actual_freq"], d["model_freq"], d["glm_freq"] = d.y / d.e, d.m / d.e, d.g / d.e
-    return d[["actual_freq", "model_freq", "glm_freq"]].reset_index(names="decile")
+    d["actual"], d["model"], d["glm"] = d.y / d.e, d.m / d.e, d.g / d.e
+    d["model_abs_err"], d["glm_abs_err"] = (d.model - d.actual).abs(), (d.glm - d.actual).abs()
+    return d[["actual", "model", "glm", "model_abs_err", "glm_abs_err"]].reset_index(names="decile")
 
 
 def calibration_plot(test, preds: dict):
@@ -290,12 +296,15 @@ def main(config_path: str) -> None:
     md_table(freq_table_md(fdf), TAB / "frequency_results")
     results["frequency"] = fdf.to_dict(orient="records")
 
-    print("I7 grouped split")
-    gcfg = {**cfg, "split": {**cfg["split"], "column": "split_grouped"}}
-    gpol = load_policies(gcfg, ("test",))
-    gdf, _ = frequency_section(cfg, gpol, {l: load_run(cfg, r) for l, r in GROUPED_RUNS.items()}, GROUPED_RUNS)
-    md_table(freq_table_md(gdf), TAB / "frequency_results_grouped_split")
-    results["frequency_grouped_split"] = gdf.to_dict(orient="records")
+    print("I7 random-split sensitivity")
+    rcfg = {**cfg, "split": {**cfg["split"], "column": "split"}}
+    rpol = load_policies(rcfg, ("test",))
+    rdf, _ = frequency_section(cfg, rpol, {l: load_run(cfg, r) for l, r in RANDOM_RUNS.items()}, RANDOM_RUNS)
+    md_table(freq_table_md(rdf), TAB / "frequency_results_random_split")
+    results["frequency_random_split"] = rdf.to_dict(orient="records")
+    search = pd.read_csv(ROOT / cfg["artifacts_dir"] / "freq_lgbm" / "search.csv")
+    search["val_poisson_deviance"] *= 100
+    md_table(search.rename(columns={"val_poisson_deviance": "val deviance (x1e-2)"}), TAB / "lgbm_search", floatfmt=".4g")
 
     print("I4 severity")
     sev_glm, sev_nns = load_run(cfg, "sev_glm")[0], load_run(cfg, "sev_nn")
@@ -309,7 +318,16 @@ def main(config_path: str) -> None:
     results["lorenz"] = lorenz_section(test, fpreds, sev_pol, load)
     best_nn = min(["FFNN (embeddings)", "CANN"], key=lambda k: fdf.set_index("model").loc[k, "val_dev"])
     results["best_nn_by_val"] = best_nn
-    md_table(double_lift(test, fpreds[best_nn], fpreds["GLM"], best_nn), TAB / "double_lift")
+    expo = test.Exposure.to_numpy(float)
+    md_table(double_lift(test.ClaimNb.to_numpy(float), fpreds[best_nn], fpreds["GLM"], expo, best_nn,
+                         "double_lift.png", "Claim frequency"), TAB / "double_lift")
+    # Pure premium: frequency NN x severity NN vs GLM x Gamma GLM, on policies with complete severity data.
+    m = test.HasSeverity.to_numpy()
+    pp_nn = fpreds[best_nn][m] * sev_pol["nn"][m] * load
+    pp_glm = fpreds["GLM"][m] * sev_pol["glm"][m] * load
+    md_table(double_lift(test.ClaimTotal.to_numpy(float)[m] * load, pp_nn, pp_glm, expo[m], best_nn,
+                         "double_lift_pure_premium.png", "Pure premium (EUR)"), TAB / "double_lift_pure_premium",
+             floatfmt=".2f")
     calibration_plot(test, fpreds)
 
     print("PDP / embeddings")

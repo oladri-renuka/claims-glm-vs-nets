@@ -33,7 +33,8 @@ class LGBMPoisson:
     def fit(self, train: pd.DataFrame, val: pd.DataFrame) -> "LGBMPoisson":
         p = dict(self.params)
         n_est, es = p.pop("n_estimators"), p.pop("early_stopping_rounds")
-        p.update(seed=self.seed, verbose=-1, num_threads=4, deterministic=True, force_row_wise=True)
+        p.update(seed=self.seed, verbose=-1, num_threads=p.pop("num_threads", 4), deterministic=True,
+                 force_row_wise=True)
         dtr = lgb.Dataset(lgb_frame(train), train.ClaimNb, init_score=np.log(train.Exposure))
         dva = lgb.Dataset(lgb_frame(val), val.ClaimNb, init_score=np.log(val.Exposure), reference=dtr)
         self.history: dict = {}

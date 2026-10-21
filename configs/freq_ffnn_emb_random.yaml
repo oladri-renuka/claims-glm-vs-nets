@@ -1,0 +1,8 @@
+inherit: base.yaml
+name: freq_ffnn_emb_random
+task: frequency
+model: ffnn
+split: {column: split}   # I7 sensitivity: plain random split (twins can straddle train/test)
+seeds: [0, 1, 2]
+params:
+  categorical_encoding: embedding

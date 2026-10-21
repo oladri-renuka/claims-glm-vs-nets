@@ -10,11 +10,12 @@ from __future__ import annotations
 import argparse
 
 import numpy as np
+import pandas as pd
 
 from src.data.load import load_claims, load_policies
 from src.metrics import gamma_deviance, poisson_deviance
 from src.models.glm import GammaGLM, HomogeneousFrequency, PoissonGLM
-from src.utils import ROOT, Tracker, load_config, nn_params, run_dir, set_seed, write_json
+from src.utils import ROOT, Tracker, load_config, nn_params, read_json, run_dir, set_seed, write_json
 
 
 def build_model(cfg: dict, seed: int):
@@ -53,6 +54,32 @@ def build_model(cfg: dict, seed: int):
     raise ValueError(f"unknown task/model {task}/{kind}")
 
 
+def lgbm_search(cfg: dict, train, val, tracker: Tracker) -> dict:
+    """Random search over cfg['search']['space'] on validation Poisson deviance (seed 0).
+    Returns cfg['params'] updated with the best trial; all trials go to search.csv."""
+    from src.models.gbm import LGBMPoisson
+
+    sc = cfg["search"]
+    rng = np.random.default_rng(sc["seed"])
+    trials = []
+    for i in range(sc["n_trials"]):
+        trial = {k: v[rng.integers(len(v))] for k, v in sc["space"].items()}
+        params = {**cfg["params"], **trial}
+        with tracker.run(f"{cfg['name']}-search{i}", {**params, "trial": i}) as t:
+            m = LGBMPoisson(params, sc["seed"]).fit(train, val)
+            dev = poisson_deviance(val.ClaimNb, m.predict(val))
+            t.log_metrics({"val_poisson_deviance": dev, "best_iteration": m.booster.best_iteration})
+        trials.append({"trial": i, **trial, "best_iteration": m.booster.best_iteration, "val_poisson_deviance": dev})
+        print(f"[{cfg['name']}] search {i}: val={dev:.5f} {trial}")
+    table = pd.DataFrame(trials).sort_values("val_poisson_deviance")
+    out = ROOT / cfg["artifacts_dir"] / cfg["name"]
+    out.mkdir(parents=True, exist_ok=True)
+    table.to_csv(out / "search.csv", index=False)
+    best = table.iloc[0].drop(["trial", "best_iteration", "val_poisson_deviance"]).to_dict()
+    best = {k: (v.item() if hasattr(v, "item") else v) for k, v in best.items()}
+    return {**cfg["params"], **best}
+
+
 def val_metrics(cfg: dict, model, train, val) -> dict:
     if cfg["task"] == "frequency":
         mu = model.predict(val)
@@ -70,6 +97,11 @@ def main(config_path: str) -> dict:
     data = load_claims(cfg) if cfg["task"] == "severity" else load_policies(cfg)
     train, val = data[data.split == "train"], data[data.split == "val"]
     tracker = Tracker(cfg)
+    if "search" in cfg:
+        cfg["params"] = lgbm_search(cfg, train, val, tracker)
+    elif "params_from" in cfg:
+        src = read_json(ROOT / cfg["artifacts_dir"] / cfg["params_from"] / "summary.json")
+        cfg["params"] = src["config"]["params"]
     summary = {"name": cfg["name"], "config": cfg, "seeds": {}}
     for seed in cfg["seeds"]:
         model = build_model(cfg, seed)  # imports torch if needed; weights are created in fit()

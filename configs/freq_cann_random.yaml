@@ -1,0 +1,9 @@
+inherit: base.yaml
+name: freq_cann_random
+task: frequency
+model: cann
+split: {column: split}   # I7 sensitivity: plain random split (twins can straddle train/test)
+seeds: [0, 1, 2]
+params:
+  categorical_encoding: embedding
+  glm_run: freq_glm_random   # frozen GLM whose log-prediction is the skip connection

@@ -7,7 +7,9 @@ params:
   hidden: [32, 16]
   latent_dim: 4
   beta: 1.0
-  max_epochs: 200
+  lr: 0.003            # still improving at the old 200-epoch cap; faster lr + early stopping
+  max_epochs: 2000
+  patience: 30
 segmentation:
   k_range: [4, 5, 6, 7, 8, 9, 10]
   serve_k: 6

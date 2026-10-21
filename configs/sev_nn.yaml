@@ -6,3 +6,6 @@ seeds: [0, 1, 2, 3, 4]
 params:
   categorical_encoding: embedding
   batch_size: 1000     # only ~21K training claims; 5,000 would be ~4 steps/epoch
+  lr: 0.0001           # at 1e-3 validation deviance peaked at epoch 1; lower lr + patience gives a converged fit
+  patience: 100
+  max_epochs: 3000

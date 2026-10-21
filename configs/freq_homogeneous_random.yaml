@@ -1,6 +1,6 @@
 inherit: base.yaml
-name: freq_homogeneous_grouped
+name: freq_homogeneous_random
 task: frequency
 model: homogeneous
-split: {column: split_grouped}
+split: {column: split}   # I7 sensitivity: plain random split (twins can straddle train/test)
 seeds: [0]           # deterministic: one fit, std = 0 by construction

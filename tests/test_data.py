@@ -3,7 +3,8 @@ import pandas as pd
 import pytest
 
 from src.data.features import NNPreprocessor, glm_columns, glm_design
-from src.data.load import apply_caps, apply_consistency_rule, split
+from src.data.load import apply_caps, apply_consistency_rule, grouped_split, split
+from src.data.schema import FEATURES
 
 CAPS = {"ClaimNb": 4, "Exposure": 1.0, "VehAge": 20, "DrivAge": 90, "BonusMalus": 150}
 
@@ -49,3 +50,14 @@ def test_preprocessor_rejects_unknown_category(policies):
     assert np.allclose(xc.mean(0), 0, atol=1e-5)
     with pytest.raises(ValueError, match="unknown VehBrand"):
         pre.transform(policies.assign(VehBrand="B99"))
+
+
+def test_grouped_split_keeps_identical_profiles_together(policies):
+    # Duplicate every 3rd policy under a new IDpol (same insured re-issued), as in freMTPL2.
+    twins = policies.iloc[::3].assign(IDpol=lambda d: d.IDpol + 10**6)
+    df = pd.concat([policies, twins], ignore_index=True)
+    lab = grouped_split(df, [0.8, 0.1, 0.1], 0)
+    per_profile = lab.groupby([df[c] for c in FEATURES]).nunique()
+    assert (per_profile == 1).all()
+    shares = lab.value_counts(normalize=True)
+    assert abs(shares["train"] - 0.8) < 0.02 and abs(shares["test"] - 0.1) < 0.02

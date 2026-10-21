@@ -1,6 +1,6 @@
 inherit: base.yaml
-name: freq_glm_grouped
+name: freq_glm_random
 task: frequency
 model: glm
-split: {column: split_grouped}
+split: {column: split}   # I7 sensitivity: plain random split (twins can straddle train/test)
 seeds: [0]           # deterministic (IRLS): one fit, std = 0 by construction
