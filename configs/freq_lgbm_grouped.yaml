@@ -1,0 +1,17 @@
+inherit: base.yaml
+name: freq_lgbm_grouped
+task: frequency
+model: lgbm
+split: {column: split_grouped}
+seeds: [0, 1, 2]
+params:
+  objective: poisson
+  learning_rate: 0.03
+  num_leaves: 31
+  min_child_samples: 200
+  subsample: 0.8
+  subsample_freq: 1
+  colsample_bytree: 0.9
+  reg_lambda: 1.0
+  n_estimators: 5000
+  early_stopping_rounds: 100

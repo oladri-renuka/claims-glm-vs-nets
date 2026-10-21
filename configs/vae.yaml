@@ -1,0 +1,14 @@
+inherit: base.yaml
+name: vae
+task: vae
+model: vae
+seeds: [0, 1, 2]
+params:
+  hidden: [32, 16]
+  latent_dim: 4
+  beta: 1.0
+  max_epochs: 200
+segmentation:
+  k_range: [4, 5, 6, 7, 8, 9, 10]
+  serve_k: 6
+  silhouette_sample: 20000

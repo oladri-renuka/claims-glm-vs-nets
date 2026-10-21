@@ -1,0 +1,6 @@
+inherit: base.yaml
+name: freq_glm_grouped
+task: frequency
+model: glm
+split: {column: split_grouped}
+seeds: [0]           # deterministic (IRLS): one fit, std = 0 by construction

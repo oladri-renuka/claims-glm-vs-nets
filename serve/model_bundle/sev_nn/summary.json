@@ -1,0 +1,105 @@
+{
+  "name": "sev_nn",
+  "config": {
+    "data": {
+      "raw_dir": "data/raw",
+      "processed_dir": "data/processed",
+      "freq_url": "https://huggingface.co/datasets/mabilton/fremtpl2/resolve/main/freMTPL2freq.csv",
+      "sev_url": "https://huggingface.co/datasets/mabilton/fremtpl2/resolve/main/freMTPL2sev.csv",
+      "caps": {
+        "ClaimNb": 4,
+        "Exposure": 1.0,
+        "VehAge": 20,
+        "DrivAge": 90,
+        "BonusMalus": 150
+      },
+      "severity_cap_quantile": 0.995
+    },
+    "split": {
+      "seed": 2018,
+      "fractions": [
+        0.8,
+        0.1,
+        0.1
+      ],
+      "column": "split"
+    },
+    "artifacts_dir": "artifacts",
+    "tracking": {
+      "enabled": true,
+      "backend": "mlflow",
+      "uri": "sqlite:///mlflow.db",
+      "experiment": "freMTPL2-pricing"
+    },
+    "nn_defaults": {
+      "lr": 0.001,
+      "batch_size": 5000,
+      "max_epochs": 500,
+      "patience": 20,
+      "hidden": [
+        20,
+        15,
+        10
+      ],
+      "activation": "tanh",
+      "embedding_dim": 2,
+      "num_threads": 2
+    },
+    "name": "sev_nn",
+    "task": "severity",
+    "model": "ffnn",
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "params": {
+      "categorical_encoding": "embedding",
+      "batch_size": 1000
+    }
+  },
+  "seeds": {
+    "0": {
+      "val_gamma_deviance": 1.2336080589238998,
+      "train_gamma_deviance": 1.1748281815127772,
+      "epochs": 22,
+      "best_epoch": 1,
+      "train_seconds": 1.5778212547302246
+    },
+    "1": {
+      "val_gamma_deviance": 1.230990501771547,
+      "train_gamma_deviance": 1.175663940667367,
+      "epochs": 21,
+      "best_epoch": 0,
+      "train_seconds": 1.6734588146209717
+    },
+    "2": {
+      "val_gamma_deviance": 1.229119707584325,
+      "train_gamma_deviance": 1.1743326740900921,
+      "epochs": 22,
+      "best_epoch": 1,
+      "train_seconds": 1.7067909240722656
+    },
+    "3": {
+      "val_gamma_deviance": 1.2346201133729653,
+      "train_gamma_deviance": 1.1710400978174562,
+      "epochs": 23,
+      "best_epoch": 2,
+      "train_seconds": 1.6662700176239014
+    },
+    "4": {
+      "val_gamma_deviance": 1.2379367755191564,
+      "train_gamma_deviance": 1.171055208032901,
+      "epochs": 23,
+      "best_epoch": 2,
+      "train_seconds": 1.5400152206420898
+    }
+  },
+  "val_metric": {
+    "name": "val_gamma_deviance",
+    "mean": 1.2332550314343789,
+    "std": 0.003396167057192245
+  }
+}

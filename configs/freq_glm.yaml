@@ -1,0 +1,5 @@
+inherit: base.yaml
+name: freq_glm
+task: frequency
+model: glm
+seeds: [0]           # deterministic (IRLS): one fit, std = 0 by construction

@@ -1,0 +1,8 @@
+inherit: base.yaml
+name: freq_ffnn_emb_grouped
+task: frequency
+model: ffnn
+split: {column: split_grouped}
+seeds: [0, 1, 2]
+params:
+  categorical_encoding: embedding

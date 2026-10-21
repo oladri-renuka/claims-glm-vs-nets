@@ -1,0 +1,8 @@
+inherit: base.yaml
+name: sev_nn
+task: severity
+model: ffnn
+seeds: [0, 1, 2, 3, 4]
+params:
+  categorical_encoding: embedding
+  batch_size: 1000     # only ~21K training claims; 5,000 would be ~4 steps/epoch

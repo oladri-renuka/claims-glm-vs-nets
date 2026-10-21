@@ -1,0 +1,36 @@
+{
+  "params": {
+    "lr": 0.001,
+    "batch_size": 1000,
+    "max_epochs": 500,
+    "patience": 20,
+    "hidden": [
+      20,
+      15,
+      10
+    ],
+    "activation": "tanh",
+    "embedding_dim": 2,
+    "num_threads": 2,
+    "categorical_encoding": "embedding"
+  },
+  "seed": 4,
+  "pre": {
+    "mean": {
+      "VehPower": 6.463796200018906,
+      "VehAge": 7.309811891483127,
+      "DrivAge": 45.09807165138482,
+      "BonusMalus": 65.18177521504869,
+      "LogDensity": 6.192877495811487,
+      "VehGasDiesel": 0.5114377540410247
+    },
+    "std": {
+      "VehPower": 2.0230249041199473,
+      "VehAge": 4.978111483581367,
+      "DrivAge": 14.667220508274845,
+      "BonusMalus": 19.90722074642109,
+      "LogDensity": 1.8492869544275425,
+      "VehGasDiesel": 0.49988097385197977
+    }
+  }
+}

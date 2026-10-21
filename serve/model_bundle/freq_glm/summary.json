@@ -1,0 +1,67 @@
+{
+  "name": "freq_glm",
+  "config": {
+    "data": {
+      "raw_dir": "data/raw",
+      "processed_dir": "data/processed",
+      "freq_url": "https://huggingface.co/datasets/mabilton/fremtpl2/resolve/main/freMTPL2freq.csv",
+      "sev_url": "https://huggingface.co/datasets/mabilton/fremtpl2/resolve/main/freMTPL2sev.csv",
+      "caps": {
+        "ClaimNb": 4,
+        "Exposure": 1.0,
+        "VehAge": 20,
+        "DrivAge": 90,
+        "BonusMalus": 150
+      },
+      "severity_cap_quantile": 0.995
+    },
+    "split": {
+      "seed": 2018,
+      "fractions": [
+        0.8,
+        0.1,
+        0.1
+      ],
+      "column": "split"
+    },
+    "artifacts_dir": "artifacts",
+    "tracking": {
+      "enabled": true,
+      "backend": "mlflow",
+      "uri": "sqlite:///mlflow.db",
+      "experiment": "freMTPL2-pricing"
+    },
+    "nn_defaults": {
+      "lr": 0.001,
+      "batch_size": 5000,
+      "max_epochs": 500,
+      "patience": 20,
+      "hidden": [
+        20,
+        15,
+        10
+      ],
+      "activation": "tanh",
+      "embedding_dim": 2,
+      "num_threads": 2
+    },
+    "name": "freq_glm",
+    "task": "frequency",
+    "model": "glm",
+    "seeds": [
+      0
+    ]
+  },
+  "seeds": {
+    "0": {
+      "val_poisson_deviance": 0.31493926324382604,
+      "train_poisson_deviance": 0.31364423359785953,
+      "val_balance": 1.0052905303540565
+    }
+  },
+  "val_metric": {
+    "name": "val_poisson_deviance",
+    "mean": 0.31493926324382604,
+    "std": 0.0
+  }
+}

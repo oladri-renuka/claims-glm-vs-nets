@@ -1,0 +1,27 @@
+# Shared settings. Every experiment config inherits from this file.
+data:
+  raw_dir: data/raw
+  processed_dir: data/processed
+  freq_url: https://huggingface.co/datasets/mabilton/fremtpl2/resolve/main/freMTPL2freq.csv
+  sev_url: https://huggingface.co/datasets/mabilton/fremtpl2/resolve/main/freMTPL2sev.csv
+  caps: {ClaimNb: 4, Exposure: 1.0, VehAge: 20, DrivAge: 90, BonusMalus: 150}
+  severity_cap_quantile: 0.995   # computed on training claims only
+split:
+  seed: 2018
+  fractions: [0.8, 0.1, 0.1]     # train / val / test, stratified on ClaimNb > 0
+  column: split                 # "split_grouped" = robustness split (I7)
+artifacts_dir: artifacts
+tracking:
+  enabled: true
+  backend: mlflow
+  uri: sqlite:///mlflow.db
+  experiment: freMTPL2-pricing
+nn_defaults:
+  lr: 0.001
+  batch_size: 5000
+  max_epochs: 500
+  patience: 20                  # early stopping on validation deviance
+  hidden: [20, 15, 10]
+  activation: tanh
+  embedding_dim: 2
+  num_threads: 2

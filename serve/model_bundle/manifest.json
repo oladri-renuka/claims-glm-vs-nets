@@ -1,0 +1,9 @@
+{
+  "freq_nn": "freq_ffnn_emb",
+  "freq_nn_val_deviance": {
+    "freq_ffnn_emb": 0.3066481924281669,
+    "freq_cann": 0.30717249064617796
+  },
+  "large_loss_load": 1.2205328712032975,
+  "severity_cap": 34148.44565000006
+}

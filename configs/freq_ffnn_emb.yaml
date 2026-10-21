@@ -1,0 +1,7 @@
+inherit: base.yaml
+name: freq_ffnn_emb
+task: frequency
+model: ffnn
+seeds: [0, 1, 2, 3, 4]
+params:
+  categorical_encoding: embedding

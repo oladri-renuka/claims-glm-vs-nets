@@ -1,0 +1,5 @@
+inherit: base.yaml
+name: sev_glm
+task: severity
+model: glm
+seeds: [0]

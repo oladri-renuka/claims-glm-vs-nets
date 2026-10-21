@@ -1,0 +1,9 @@
+data/
+artifacts/
+mlruns/
+mlflow.db
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
+logs/

@@ -1,0 +1,9 @@
+inherit: base.yaml
+name: freq_cann_grouped
+task: frequency
+model: cann
+split: {column: split_grouped}
+seeds: [0, 1, 2]
+params:
+  categorical_encoding: embedding
+  glm_run: freq_glm_grouped   # frozen GLM whose log-prediction is the skip connection

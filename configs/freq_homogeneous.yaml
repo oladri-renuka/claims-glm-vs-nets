@@ -1,0 +1,5 @@
+inherit: base.yaml
+name: freq_homogeneous
+task: frequency
+model: homogeneous
+seeds: [0]           # deterministic: one fit, std = 0 by construction

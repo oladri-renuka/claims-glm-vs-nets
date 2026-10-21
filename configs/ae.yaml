@@ -1,0 +1,10 @@
+inherit: base.yaml
+name: ae
+task: autoencoder
+model: ae
+seeds: [0, 1, 2]
+params:
+  hidden: [32, 16]
+  latent_dim: 4
+  max_epochs: 200
+  anomaly_quantile: 0.99   # threshold on training reconstruction error
