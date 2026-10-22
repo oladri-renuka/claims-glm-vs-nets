@@ -21,7 +21,7 @@ make serve     # FastAPI on :8000   (make app → Streamlit premium explorer; ma
 
 Example: `curl -X POST 'localhost:8000/quote?model=nn' -H 'content-type: application/json' -d @serve/example_policy.json`
 
-[![docker-smoke](https://github.com/oladri-renuka/glm-vs-nets/actions/workflows/docker.yml/badge.svg)](https://github.com/oladri-renuka/glm-vs-nets/actions/workflows/docker.yml): CI builds the serving image, prices a policy through the container, and checks that an unknown VehBrand gets a 422.
+[![docker-smoke](https://github.com/oladri-renuka/claims-glm-vs-nets/actions/workflows/docker.yml/badge.svg)](https://github.com/oladri-renuka/claims-glm-vs-nets/actions/workflows/docker.yml): CI builds the serving image, prices a policy through the container, and checks that an unknown VehBrand gets a 422.
 
 ## The split matters: duplicate policies
 
