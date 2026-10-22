@@ -1,0 +1,5 @@
+Frequency x severity,Gini,bootstrap sd,Gini - GLM pair,paired 95% CI
+GLM x Gamma GLM,0.295,0.022,+0.000,—
+LightGBM x Gamma GLM,0.332,0.023,+0.037,"[+0.016, +0.058]"
+CANN x Gamma NN,0.318,0.022,+0.023,"[+0.000, +0.046]"
+FFNN x Gamma NN,0.315,0.023,+0.020,"[-0.008, +0.047]"

@@ -1,0 +1,4 @@
+Neural net,NN − LightGBM (×10⁻²),paired 95% CI
+FFNN (one-hot),0.442,"[0.323, 0.550]"
+FFNN (embeddings),0.434,"[0.320, 0.543]"
+CANN,0.416,"[0.310, 0.520]"

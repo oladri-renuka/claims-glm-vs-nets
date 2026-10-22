@@ -1,10 +1,15 @@
 # Neural claim pricing vs the Poisson GLM on freMTPL2 (678K French motor policies)
 
-**Result: on a leakage-free test split, neural nets (FFNN, CANN) cut out-of-sample Poisson deviance by 1.9% versus the industry-standard Poisson GLM (31.50 → 30.89 ×10⁻², 95% CI excludes 0). A tuned LightGBM cuts it by 3.2% and beats every neural net. Neural nets do not help on claim severity, and VAE segments separate risk far worse than simple GLM-frequency bands.**
+**Key findings** (678K policies; test numbers on a duplicate-free split):
+
+- **Duplicate policies inflate every flexible model's gain over the GLM.** The same insured appears under several policy IDs, and 33% of random-split test policies have an exact twin in train. Splitting so twins never straddle train and test shrinks LightGBM's gain by about a third (+4.3% → +3.2%) and the neural nets' by about 15% (+2.2% → +1.9%).
+- **Where CANN and the GLM disagree, observed claims follow the network.** In the deciles where they disagree most, the GLM misprices claim frequency by 42–77% (chart below).
+- **Short-exposure policies have 3.1× more claims than predicted**, a failure every model shares. Claims do not scale with exposure the way the industry-standard offset assumes.
+- **Ranking on Poisson deviance: LightGBM > neural nets > GLM, every gap significant.** Against the GLM's 31.50 ×10⁻², tuned LightGBM scores 30.48 (−3.2%) and CANN 30.89 (−1.9%). Paired 95% CIs exclude zero for each gap, including LightGBM vs CANN.
 
 ![Double-lift chart](reports/figures/double_lift.png)
 
-*Double-lift on the test split: policies are sorted by the CANN/GLM prediction ratio. Where the two models disagree, observed claim frequency (black) follows the neural net. The GLM over-prices decile 1 by 77% and under-prices decile 10 by 42%.*
+*Double-lift on the test split: policies are sorted by the CANN/GLM prediction ratio. Where the two models disagree, observed claim frequency (black) follows the neural net. The GLM over-prices decile 1 by 77% and under-prices decile 10 by 42%. In the body: neural nets do not help on claim severity, and VAE segments separate risk worse than simple GLM-frequency bands.*
 
 ## How to run (3 commands)
 
@@ -41,7 +46,7 @@ All numbers are on the untouched test split (67,803 policies) unless marked "val
 
 \*The GLM (IRLS) and the homogeneous model are deterministic, so their seed std is 0 by construction.
 
-- **Who wins:** gradient boosting, clearly. LightGBM's lead over the best neural net (30.48 vs 30.89) is more than 10 times the NN seed std.
+- **Who wins:** gradient boosting, clearly. Every neural net trails LightGBM significantly (paired bootstrap): CANN is 0.42 ×10⁻² behind, 95% CI [0.31, 0.52] ([lgbm_vs_nn.md](reports/tables/lgbm_vs_nn.md)).
 - **Was LightGBM tuned fairly?** Yes: it got a **20-trial random search** on validation deviance ([search table](reports/tables/lgbm_search.md)), and the best configuration was refitted on 5 seeds. The search surface is flat: every trial landed between 30.83 and 30.88 val. So the result does not hinge on tuning, and the neural nets do not beat gradient boosting here.
 - **Embeddings vs one-hot (I2):** they tie (30.912 vs 30.919, inside the seed noise). Embeddings help interpretability (I3) more than accuracy.
 - **CANN vs FFNN:** CANN is best of the nets by a hair. It also starts exactly at the GLM, which a test verifies, so the network only learns the GLM's residual. That makes it the easiest model for a pricing team to sign off.
@@ -72,12 +77,21 @@ Claims are capped at the train 99.5th percentile (€36,549; 120 claims). The ca
 
 ### Pure premium: ranking and double-lift
 
-| Pure premium = frequency × severity | Gini (± bootstrap sd) |
-|---|---|
-| GLM × Gamma GLM | 0.295 ± 0.022 |
-| FFNN × Gamma NN | 0.315 ± 0.023 |
-| CANN × Gamma NN | 0.318 ± 0.021 |
-| LightGBM × Gamma GLM | 0.332 ± 0.022 |
+| Pure premium = frequency × severity | Gini (± bootstrap sd) | Gini − GLM pair | Paired 95% CI (1,000 resamples) |
+|---|---|---|---|
+| GLM × Gamma GLM | 0.295 ± 0.022 | — | — |
+| FFNN × Gamma NN | 0.315 ± 0.023 | +0.020 | [−0.008, +0.047] |
+| CANN × Gamma NN | 0.318 ± 0.022 | +0.023 | [+0.000, +0.046] |
+| LightGBM × Gamma GLM | 0.332 ± 0.023 | +0.037 | [+0.016, +0.058] |
+
+Each Gini has a bootstrap sd of about 0.022, the same size as the gaps between pairs, so separate CIs would overlap. The paired bootstrap resamples the same policies for every pair, which removes the shared noise:
+
+- Only **LightGBM × Gamma GLM** ranks losses significantly better than the GLM pair.
+- CANN's improvement is borderline: the lower bound of its CI is 0.00004.
+- FFNN's improvement is not significant.
+- LightGBM vs each neural pair is not significant either (CI vs CANN [−0.008, +0.036]).
+
+On pure-premium ranking, then, only "LightGBM beats the GLM" is supported. The neural nets' clear advantage is in frequency deviance and in the double-lift below. Table: [gini_pure_premium.md](reports/tables/gini_pure_premium.md).
 
 Ordered Lorenz curve: [lorenz_pure_premium.png](reports/figures/lorenz_pure_premium.png). Policies are ranked by premium per policy-year.
 
@@ -140,6 +154,7 @@ The service is in `serve/`.
   - autoencoder anomaly flag and score
 - **Validation:** a Pydantic schema enforces types, observed ranges and known categories. An unknown VehBrand or Region gets a 422 that lists the allowed values. `GET /health` is also available.
 - **Model choice:** the served neural model is the **CANN 5-seed ensemble with the Gamma NN**. CANN was chosen over the FFNN by **validation** deviance, not test.
+- **Why not serve LightGBM, the most accurate model?** The API serves CANN because it is the GLM plus a frozen-start residual network. A pricing team can sign off on it the way they sign off on GLM relativities, and its departure from the approved GLM is one explicit correction term that can be inspected, capped or switched off. LightGBM's further 0.42 ×10⁻² of deviance would need a separate governance case.
 
 | Latency, one request at a time, Apple M4 CPU, 1 thread, n = 1000 | p50 | p95 |
 |---|---|---|
@@ -168,7 +183,13 @@ Counts are from `data/processed/cleaning_report.json`.
 
 ## Test-set discipline
 
-The headline numbers come from **one** evaluation of the grouped test split, run after every model and configuration had been chosen on validation.
+Every model and configuration was chosen on validation before the grouped test split was read. The test split was then evaluated three times; no model, hyper-parameter or selection changed between runs:
+
+1. The original run.
+2. A rerun that added the paired bootstrap of the Gini differences.
+3. A rerun that added the paired LightGBM-vs-neural-net deviance test.
+
+Every table and figure from the first run came out byte-identical in the later runs (checked with `git diff`). Only the new tables were added.
 
 The earlier version of this project used the random split as its main split. Its test set was evaluated three times. The reruns fixed bugs in the evaluation code (a Lorenz curve that ranked by exposure-scaled premium instead of premium per year, and a clipped plot label). No model, hyper-parameter or selection changed between those runs. That random-split test set appears here only in the I7 sensitivity table.
 

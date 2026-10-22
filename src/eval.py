@@ -97,6 +97,11 @@ def frequency_section(cfg, test, models, runs=FREQ_RUNS) -> tuple[pd.DataFrame, 
         mean, lo, hi = paired_bootstrap(glm_unit, unit_poisson(y, preds[label]))
         r["delta_vs_glm_ci95"] = f"[{lo*100:.3f}, {hi*100:.3f}]"
     df = pd.DataFrame(rows.values())
+    # Is gradient boosting's lead over the neural nets real? Same paired bootstrap, LightGBM vs each NN.
+    lgb_unit = unit_poisson(y, preds["LightGBM"])
+    df.attrs["lgbm_vs_nn"] = {
+        label: dict(zip(["mean", "lo", "hi"], [v * 100 for v in paired_bootstrap(unit_poisson(y, preds[label]), lgb_unit)]))
+        for label in preds if label in ("FFNN (one-hot)", "FFNN (embeddings)", "CANN")}
     return df, preds
 
 
@@ -135,33 +140,53 @@ def severity_section(cfg, claims_train, claims_test, glm, nns):
 
 # ------------------------------------------------------------------ ranking + calibration
 def lorenz_section(test, freq_preds, sev_preds, load):
-    """Pure premium = E[N] x E[severity]; Lorenz / Gini vs capped actual losses."""
+    """Pure premium = E[N] x E[severity]; ordered Lorenz / Gini vs capped actual losses.
+    Gini differences vs the GLM pair use a paired bootstrap (the same resampled policies for
+    every pair), so 'pair A ranks better than pair B' is tested, not eyeballed."""
     mask = test.HasSeverity.to_numpy()
     t = test[mask]
     actual, expo = t.ClaimTotal.to_numpy(float), t.Exposure.to_numpy(float)
     combos = {"GLM": ("GLM", "glm"), "LightGBM": ("LightGBM", "glm"), "CANN": ("CANN", "nn"),
               "FFNN (embeddings)": ("FFNN (embeddings)", "nn")}
+    # Rank by premium per policy-year, not by exposure-scaled premium.
+    rates = {label: freq_preds[f][mask] * sev_preds[s][mask] * load / expo for label, (f, s) in combos.items()}
     fig, ax = plt.subplots(figsize=(5.2, 4.6))
     ax.plot([0, 1], [0, 1], color=INK2, lw=1, ls="--")
     out = {}
-    rng = np.random.default_rng(0)
-    for label, (f, s) in combos.items():
-        pp = freq_preds[f][mask] * sev_preds[s][mask] * load
-        rate = pp / expo  # rank by premium per policy-year, not by exposure-scaled premium
+    for label, rate in rates.items():
         x, yv, g = lorenz_curve(rate, actual, expo)
-        boots = []
-        for _ in range(200):
-            i = rng.integers(0, len(pp), len(pp))
-            boots.append(lorenz_curve(rate[i], actual[i], expo[i])[2])
-        out[label] = {"gini": g, "gini_boot_std": float(np.std(boots)),
-                      "pure_premium_balance": float(pp.sum() / (actual.sum() * load))}
+        pp = rate * expo
+        out[label] = {"gini": g, "pure_premium_balance": float(pp.sum() / (actual.sum() * load))}
         step = max(1, len(x) // 2000)
         ax.plot(x[::step], yv[::step], color=COLORS[label], label=f"{label}  Gini {g:.3f}")
+    rng = np.random.default_rng(0)
+    boots = {label: [] for label in rates}
+    for _ in range(N_BOOT):
+        i = rng.integers(0, len(actual), len(actual))
+        for label, rate in rates.items():
+            boots[label].append(lorenz_curve(rate[i], actual[i], expo[i])[2])
+    base = np.array(boots["GLM"])
+    for label in rates:
+        b = np.array(boots[label])
+        d = b - base
+        out[label].update(gini_boot_std=float(b.std()), gini_minus_glm=out[label]["gini"] - out["GLM"]["gini"],
+                          gini_minus_glm_ci95=[float(np.quantile(d, 0.025)), float(np.quantile(d, 0.975))])
+    # Also LightGBM vs each NN pair (is boosting's lead real?).
+    for label in ["CANN", "FFNN (embeddings)"]:
+        d = np.array(boots["LightGBM"]) - np.array(boots[label])
+        out["LightGBM"][f"gini_minus_{label}_ci95"] = [float(np.quantile(d, 0.025)), float(np.quantile(d, 0.975))]
     ax.set(xlabel="Cumulative share of exposure (sorted by predicted pure premium)",
            ylabel="Cumulative share of actual losses", title="Ordered Lorenz curve, test set")
     ax.legend(loc="upper left")
     fig.savefig(FIG / "lorenz_pure_premium.png")
     plt.close(fig)
+    rows = [{"Frequency x severity": {"GLM": "GLM x Gamma GLM", "LightGBM": "LightGBM x Gamma GLM",
+                                      "CANN": "CANN x Gamma NN", "FFNN (embeddings)": "FFNN x Gamma NN"}[k],
+             "Gini": f"{v['gini']:.3f}", "bootstrap sd": f"{v['gini_boot_std']:.3f}",
+             "Gini - GLM pair": f"{v['gini_minus_glm']:+.3f}",
+             "paired 95% CI": "—" if k == "GLM" else f"[{v['gini_minus_glm_ci95'][0]:+.3f}, {v['gini_minus_glm_ci95'][1]:+.3f}]"}
+            for k, v in out.items()]
+    md_table(pd.DataFrame(rows), TAB / "gini_pure_premium")
     return out
 
 
@@ -295,6 +320,10 @@ def main(config_path: str) -> None:
     fdf, fpreds = frequency_section(cfg, test, fmodels)
     md_table(freq_table_md(fdf), TAB / "frequency_results")
     results["frequency"] = fdf.to_dict(orient="records")
+    results["lgbm_vs_nn_deviance_x1e2"] = fdf.attrs["lgbm_vs_nn"]
+    md_table(pd.DataFrame([{"Neural net": k, "NN − LightGBM (×10⁻²)": f"{v['mean']:.3f}",
+                            "paired 95% CI": f"[{v['lo']:.3f}, {v['hi']:.3f}]"} for k, v in fdf.attrs["lgbm_vs_nn"].items()]),
+             TAB / "lgbm_vs_nn")
 
     print("I7 random-split sensitivity")
     rcfg = {**cfg, "split": {**cfg["split"], "column": "split"}}

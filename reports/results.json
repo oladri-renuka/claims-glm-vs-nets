@@ -120,6 +120,23 @@
       "delta_vs_glm_ci95": "[0.465, 0.744]"
     }
   ],
+  "lgbm_vs_nn_deviance_x1e2": {
+    "FFNN (one-hot)": {
+      "mean": 0.442230380740552,
+      "lo": 0.32293807175593203,
+      "hi": 0.5500985862403591
+    },
+    "FFNN (embeddings)": {
+      "mean": 0.43428773906273893,
+      "lo": 0.32000074679768,
+      "hi": 0.5432924655772935
+    },
+    "CANN": {
+      "mean": 0.41624791592757204,
+      "lo": 0.31037243600810904,
+      "hi": 0.5197928802967186
+    }
+  },
   "frequency_random_split": [
     {
       "model": "Homogeneous",
@@ -187,23 +204,51 @@
   "lorenz": {
     "GLM": {
       "gini": 0.29477527046348395,
-      "gini_boot_std": 0.022401987426084166,
-      "pure_premium_balance": 1.4189772989681504
+      "pure_premium_balance": 1.4189772989681504,
+      "gini_boot_std": 0.022330513350206877,
+      "gini_minus_glm": 0.0,
+      "gini_minus_glm_ci95": [
+        0.0,
+        0.0
+      ]
     },
     "LightGBM": {
       "gini": 0.3316458594374584,
-      "gini_boot_std": 0.022228678752548813,
-      "pure_premium_balance": 1.3991322071389798
+      "pure_premium_balance": 1.3991322071389798,
+      "gini_boot_std": 0.022949008225351158,
+      "gini_minus_glm": 0.03687058897397444,
+      "gini_minus_glm_ci95": [
+        0.016440835040622912,
+        0.05813962465705609
+      ],
+      "gini_minus_CANN_ci95": [
+        -0.0077935608477549935,
+        0.03597536132039166
+      ],
+      "gini_minus_FFNN (embeddings)_ci95": [
+        -0.00912197349639927,
+        0.04348649446052901
+      ]
     },
     "CANN": {
       "gini": 0.31751033605149914,
-      "gini_boot_std": 0.021212036309653143,
-      "pure_premium_balance": 1.3985682731288553
+      "pure_premium_balance": 1.3985682731288553,
+      "gini_boot_std": 0.02159936399587321,
+      "gini_minus_glm": 0.02273506558801519,
+      "gini_minus_glm_ci95": [
+        3.692771871277605e-05,
+        0.04600086724071565
+      ]
     },
     "FFNN (embeddings)": {
       "gini": 0.3147481846276451,
-      "gini_boot_std": 0.022694058663071327,
-      "pure_premium_balance": 1.3914231674049218
+      "pure_premium_balance": 1.3914231674049218,
+      "gini_boot_std": 0.022657192865974236,
+      "gini_minus_glm": 0.019972914164161137,
+      "gini_minus_glm_ci95": [
+        -0.00764324778327522,
+        0.04733072075046534
+      ]
     }
   },
   "best_nn_by_val": "CANN",
